@@ -1,0 +1,16 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.log
+
+# vecchio codice e file locali
+_old/
+/miniVic.bin
+tests/out/
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+tests/fixtures/klaus/
