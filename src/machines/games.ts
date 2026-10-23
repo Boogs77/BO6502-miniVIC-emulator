@@ -19,6 +19,7 @@ export const GAMES: GameInfo[] = [
   { file: 'asteroids.bin', title: 'Asteroids', players: '1-2' },
   { file: 'space_invaders.bin', title: 'Space Invaders', players: '1-2' },
   { file: 'warlords.bin', title: 'Warlords', players: '1-2' },
+  { file: 'defender.bin', title: 'Defender', players: '1' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
