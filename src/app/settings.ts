@@ -16,6 +16,8 @@ export interface Settings {
   scanlines: boolean;
   /** RAM casuale all'accensione (come le SRAM reali); false = azzerata come minivic.js */
   randomRam: boolean;
+  /** impaginazione del terminale seriale: come il CRT (40x24) o ANSI 80x24 */
+  serialMode: 'crt' | 'ansi';
 }
 
 const KEY = 'bo6502-emulator.settings.v1';
@@ -33,6 +35,7 @@ function defaults(): Settings {
     smooth: false,
     scanlines: false,
     randomRam: false,
+    serialMode: 'crt',
   };
 }
 

@@ -63,10 +63,20 @@ export class App {
     this.panels.set('media', this.media.el);
     this.panels.set('rack', this.rack.el);
     this.panels.set('audio', this.audioPanel.el);
+    const serialMode = h('select', { 'aria-label': 'Impaginazione del terminale' },
+      h('option', { value: 'crt', selected: emu.settings.serialMode !== 'ansi' }, 'Come il CRT (40x24)'),
+      h('option', { value: 'ansi', selected: emu.settings.serialMode === 'ansi' }, 'Terminale ANSI 80x24'));
+    serialMode.addEventListener('change', () => {
+      emu.settings.serialMode = serialMode.value as 'crt' | 'ansi';
+      emu.save();
+      this.terminal.setMode(emu.settings.serialMode);
+    });
+    this.terminal.setMode(emu.settings.serialMode);
     this.panels.set('terminal', h('div', { class: 'panel-body' },
       h('p', { class: 'hint' }, 'Porta seriale W65C51 (19200 8N1). Clicca sul terminale per scrivere: i tasti arrivano alla ricezione dell’ACIA.'),
-      this.terminal.el,
-      h('div', { class: 'row' }, h('button', { type: 'button', onclick: () => this.terminal.clear() }, 'Pulisci'))));
+      h('div', { class: 'row' }, h('label', {}, 'Impaginazione ', serialMode),
+        h('button', { type: 'button', onclick: () => this.terminal.clear() }, 'Pulisci')),
+      this.terminal.el));
     this.panels.set('debug', this.debug.el);
 
     // ---------- barra superiore ----------
