@@ -181,9 +181,13 @@ export class Machine {
     this.lineTarget = this.cpu.cycles;
   }
 
-  /** accensione: RAM con contenuto casuale come le SRAM reali, poi reset */
+  /** contenuto della RAM all'accensione: casuale come le SRAM reali, oppure azzerata */
+  randomRam = false;
+
+  /** accensione: inizializza la RAM, poi reset */
   powerOn(): void {
-    for (let i = 0; i < this.ram.length; i++) this.ram[i] = (Math.random() * 256) | 0;
+    if (this.randomRam) for (let i = 0; i < this.ram.length; i++) this.ram[i] = (Math.random() * 256) | 0;
+    else this.ram.fill(0);
     for (const b of this.boards) b.powerOn?.();
     this.cpu.a = this.cpu.x = this.cpu.y = 0;
     this.cpu.sp = 0xFD;

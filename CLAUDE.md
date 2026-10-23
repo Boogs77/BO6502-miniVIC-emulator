@@ -60,7 +60,7 @@ public/demos/*.bin      demo delle schede (sorgenti in tests/fixtures/asm, assem
 .github/workflows/pages.yml  build e deploy su GitHub Pages
 public/roms/minivic.bin BIOS miniVIC 30.09.26 (WozMon + MS BASIC 1977 + menu SD) - ROM predefinita
 public/games/*.bin      giochi miniVIC (caricati a $0FD0, avvio a $1000)
-tests/                  run.mjs (runner), cpu/devices/minivic.test.ts, helpers.ts (PNG, testo schermo, tasti)
+tests/                  run.mjs (runner), cpu/devices/displays/games/minivic.test.ts, helpers.ts (PNG, testo, tasti)
 _old/                   vecchio emulatore (non in git)
 ```
 
@@ -89,6 +89,12 @@ Hardware comune: W65C02S, RAM 32 KB `$0000-$7FFF`, ROM 32 KB `$8000-$FFFF` (con 
   scheda LCD_KEYb (PB dati, RS/RW/E su PA5/PA6/PA7, ipotesi Ben Eater). La parte tastiera della scheda non e' emulata.
 - Bus: con schede sovrapposte risponde la prima nell'ordine del rack (`BO6502_BOARD_ORDER`); il rack segnala il conflitto.
 - Big LCD: la RAM del T6963 e' casuale all'accensione (`Board.powerOn()`), come sul display reale.
+- RAM all'accensione: **azzerata di default** (come `minivic.js`), opzione "casuale" nel pannello Rack.
+  Motivo (2026-10-23): alcuni giochi leggono variabili prima di inizializzarle, perche' abilitano l'INT del VDP
+  quando il flag F e' gia' alto (il BIOS non legge mai lo stato) e l'NMI parte subito:
+  `centipede.asm` (RESET scrive R1=$E6 prima che TITLE azzeri `QGO` $79 -> coda casuale, schermo nero),
+  `the_warriors.asm` (`SAT_BUFFER` $0260 copiato dall'NMI prima di essere scritto), `asteroids.asm` (`WAVE` $91).
+  Da segnalare/correggere nei giochi: inizializzare le variabili dell'NMI (o leggere VREG) prima di abilitare l'INT.
 
 ## BIOS miniVIC (sorgente: `G:\Il mio Drive\Progetti\6205\001 - MSBASIC\023 - ...\msbasic\`)
 - Vettori: RESET `$E000` (menu), NMI `$A785` → `PHA PHX PHY / JSR $0FD0 / LDA $B001 / PLY PLX PLA / RTI`,

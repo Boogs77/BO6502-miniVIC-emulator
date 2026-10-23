@@ -14,6 +14,8 @@ export interface Settings {
   showJoysticks: boolean;
   smooth: boolean;
   scanlines: boolean;
+  /** RAM casuale all'accensione (come le SRAM reali); false = azzerata come minivic.js */
+  randomRam: boolean;
 }
 
 const KEY = 'bo6502-emulator.settings.v1';
@@ -30,6 +32,7 @@ function defaults(): Settings {
     showJoysticks: true,
     smooth: false,
     scanlines: false,
+    randomRam: false,
   };
 }
 
