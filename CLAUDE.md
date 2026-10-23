@@ -5,6 +5,7 @@ Emulatore web (TypeScript + Vite, nessuna dipendenza a runtime) di due computer 
 - **miniVIC**: la versione compatta per i giochi — giochi in https://github.com/Boogs77/miniVIC_games
 
 Repository: https://github.com/Boogs77/BO6502-miniVIC-emulator
+Online (GitHub Pages, deploy automatico a ogni push su main): https://boogs77.github.io/BO6502-miniVIC-emulator/
 
 ## Lingua e stile
 - Rispondi all'utente in **italiano**. Commenti nel codice e testi dell'interfaccia in italiano.
@@ -38,7 +39,11 @@ src/
   devices/ACIA6551.ts   W65C51: TX immediato (TDRE sempre 1), coda RX, IRQ RX
   devices/SDCard.ts     SD in SPI (SDSC, indirizzi a byte): CMD0/8/12/16/17/24/55/58 + ACMD41
   devices/KeyboardPS2.ts scancode set 2 grezzi (E0, F0) sulla porta A + impulso su CA1
-  boards/Boards.ts      schede: VduBoard, SerialBoard, KeyboardBoard, JoystickBoard, SdCardBoard, AudioBoard
+  devices/T6963.ts      T6963C: comandi con parametri, auto write/read, OR/EXOR/AND, testo+grafica, CG RAM, cursore
+  devices/HD44780.ts    HD44780U: 8/4 bit (nibble su E in discesa), DDRAM 2 righe, CGRAM, shift, lettura BF/AC/dati
+  devices/font5x8.ts    font 5x8 ASCII estratto da VDP_PATTERNS del BIOS (crt_text_drv.s), usato dagli LCD
+  boards/Boards.ts      schede: VduBoard, SerialBoard, KeyboardBoard, JoystickBoard, SdCardBoard, AudioBoard, BaseBoard
+  boards/DisplayBoards.ts BigLcdBoard (T6963), LcdBoard (HD44780, cablaggio 4bit/8bit), LedBoard (16 LED)
   core/Board.ts         interfaccia delle schede (base, size, irqLine, read/write/peek, tick, endFrame)
   core/Machine.ts       bus a blocchi di 16 byte, RAM/ROM, buchi ROM $B000-$DFFF, linee IRQ (wired-OR) e NMI
                         (fronte), frame NTSC da 262 righe, breakpoint
@@ -49,7 +54,10 @@ src/
   audio/AudioOutput.ts  AudioWorklet (da Blob) con coda; riporta i campioni in coda per agganciare il ritmo
   app/Emulator.ts       controller: macchina, accensione, ciclo RAF agganciato all'audio, input, caricamenti
   app/settings.ts       impostazioni in localStorage (sempre in try/catch)
-  ui/                   App (layout), Screen, Terminal (ANSI), VirtualKeyboard, Joypad, panels/*
+  ui/                   App (layout), Screen, Displays (Big LCD, LCD 16x2, LED), Terminal (ANSI),
+                        VirtualKeyboard, Joypad, panels/*
+public/demos/*.bin      demo delle schede (sorgenti in tests/fixtures/asm, assemblati con vasm)
+.github/workflows/pages.yml  build e deploy su GitHub Pages
 public/roms/minivic.bin BIOS miniVIC 30.09.26 (WozMon + MS BASIC 1977 + menu SD) - ROM predefinita
 public/games/*.bin      giochi miniVIC (caricati a $0FD0, avvio a $1000)
 tests/                  run.mjs (runner), cpu/devices/minivic.test.ts, helpers.ts (PNG, testo schermo, tasti)
@@ -68,10 +76,19 @@ Hardware comune: W65C02S, RAM 32 KB `$0000-$7FFF`, ROM 32 KB `$8000-$FFFF` (con 
 | Joystick | W65C22 (PA = P1, PB = P2, attivi bassi) | `$D1A0` | `$D580` |
 | SD Card | W65C22 (PA1 MISO, PA2 MOSI, PA3 SCK, PA4 CS) | `$D1B0` | `$DD80` |
 | Audio | 2x AY-3-8910 (A0: 0 latch, 1 dato; A2: 0 destro, 1 sinistro) | `$D1C0` | `$D380` |
+| Big LCD | W65C22 + T6963C 160x128 (PB dati; PA0 /RD, PA1 /WR, PA2 /CE, PA3 C/D, PA4 /HALT, PA5 /RST) | `$D190` | — |
+| LCD legacy | W65C22 + HD44780 16x2, decodifica tutta `$Dxxx` (spenta di default) | `$D000` | — |
+| LED test | W65C22, 16 LED (PA, PB; acceso = uscita a 1), decodifica tutta `$Dxxx` (spenta di default) | `$D000` | — |
 
 - Il BO6502 è configurabile nel rack (schede, indirizzi, linea INT, clock 0,5/1/2 MHz) **solo a macchina spenta**; il miniVIC è fisso.
 - Joystick: bit 0 su, 1 giù, 2 sinistra, 3 destra, 4 tasto 1, 5 tasto 2 (0 = premuto sui pin).
 - Clock dei PSG = clock della CPU (1 MHz: periodo = 1.000.000 / (16 × f)).
+- **Decisione 2026-10-23**: la scheda audio del BO6502 usa la stessa decodifica del miniVIC (solo l'indirizzo cambia);
+  il README del modulo AUDIO (A0 = BC1, A1 = BDIR, A2 = 0 sinistro) va verificato e corretto dopo con l'utente.
+- LCD legacy: cablaggio '4bit' = `lcd.s` del BIOS (PB0-3 → DB4-7, PB4 RS, PB5 RW, PB6 E); '8bit' = README della
+  scheda LCD_KEYb (PB dati, RS/RW/E su PA5/PA6/PA7, ipotesi Ben Eater). La parte tastiera della scheda non e' emulata.
+- Bus: con schede sovrapposte risponde la prima nell'ordine del rack (`BO6502_BOARD_ORDER`); il rack segnala il conflitto.
+- Big LCD: la RAM del T6963 e' casuale all'accensione (`Board.powerOn()`), come sul display reale.
 
 ## BIOS miniVIC (sorgente: `G:\Il mio Drive\Progetti\6205\001 - MSBASIC\023 - ...\msbasic\`)
 - Vettori: RESET `$E000` (menu), NMI `$A785` → `PHA PHX PHY / JSR $0FD0 / LDA $B001 / PLY PLX PLA / RTI`,
@@ -102,7 +119,8 @@ Hardware comune: W65C02S, RAM 32 KB `$0000-$7FFF`, ROM 32 KB `$8000-$FFFF` (con 
   breakpoint, memoria CPU/VRAM, VDP, VIA).
 
 ## Da fare (prossimi passi)
-- Schede mancanti: Big LCD T6963 160x128 (`$D19x`), Legacy LCD HD44780 16x2 + tastiera (`$Dxxx`), LED test (65C22), Monitor.
+- Schede mancanti: tastiera della scheda LCD legacy, Monitor (Arduino Mega sniffer).
+- T6963: modo attributi testo, screen peek/copy, font 6x8 (FS = 1); HD44780: tempi di busy reali, CGROM giapponese A00.
 - Verificare sugli schemi: lettura dei registri AY, decodifica della scheda audio BO6502 (il README del modulo
   indica A0 = BC1, A1 = BDIR, A2 = 0 sinistro, diversa dal miniVIC), linea IRQ di ACIA/VIA.
 - Salvataggio/ripristino dello stato, scrittura SD persistente, timing VRAM del TMS (accessi troppo ravvicinati).

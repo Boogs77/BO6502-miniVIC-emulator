@@ -12,7 +12,7 @@ import { KeyboardPS2 } from '../devices/KeyboardPS2';
 import { SDCard } from '../devices/SDCard';
 import { AY38910 } from '../devices/AY38910';
 
-abstract class BaseBoard implements Board {
+export abstract class BaseBoard implements Board {
   abstract readonly type: BoardType;
   abstract readonly label: string;
   abstract readonly size: number;

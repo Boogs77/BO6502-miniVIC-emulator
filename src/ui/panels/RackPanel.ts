@@ -42,7 +42,7 @@ export class RackPanel {
 
     cfg.boards.forEach((b, i) => {
       const info = BOARD_INFO[b.type];
-      const end = b.base + (b.type === 'vdu' || b.type === 'serial' ? 0x0FFF : 0x0F);
+      const end = b.base + info.size - 1;
       const addr = h('input', { class: 'hex', value: hex(b.base, 4), size: 5, disabled: !editable, 'aria-label': `Indirizzo ${info.name}` });
       addr.addEventListener('change', () => {
         const v = parseHex(addr.value);
@@ -60,6 +60,23 @@ export class RackPanel {
         sel.addEventListener('change', () => emu.updateConfig(c => { c.boards[i].irq = sel.value as IrqLine; }));
         extra.append(h('label', {}, 'INT ', sel));
       }
+      if (b.type === 'lcd') {
+        const wiring = h('select', { disabled: !editable, 'aria-label': 'Cablaggio LCD' },
+          h('option', { value: '4bit', selected: b.option !== '8bit' }, '4 bit: PB0-3 dati, PB4 RS, PB5 RW, PB6 E'),
+          h('option', { value: '8bit', selected: b.option === '8bit' }, '8 bit: PB dati, PA5 RS, PA6 RW, PA7 E'));
+        wiring.addEventListener('change', () => emu.updateConfig(c => { c.boards[i].option = wiring.value; }));
+        extra.append(h('label', {}, 'Cablaggio ', wiring));
+      }
+      // schede inserite che si sovrappongono: sul bus vince quella piu' in alto nel rack
+      if (b.enabled) {
+        const clash = cfg.boards.filter((o, j) => j !== i && o.enabled &&
+          o.base <= end && b.base <= o.base + BOARD_INFO[o.type].size - 1);
+        if (clash.length) {
+          extra.append(h('div', { class: 'err' },
+            `Conflitto sul bus con ${clash.map(o => BOARD_INFO[o.type].name).join(', ')}` +
+            (cfg.boards.indexOf(clash[0]) < i ? ' (risponde l’altra scheda)' : '')));
+        }
+      }
       slots.push(slot(info.name, info.chips, `$${hex(b.base, 4)}-$${hex(end, 4)}`, b.enabled,
         on => emu.updateConfig(c => { c.boards[i].enabled = on; }), extra));
     });
@@ -72,7 +89,7 @@ export class RackPanel {
           : 'Backplane a 39 pin: inserisci le schede e imposta gli indirizzi come con i jumper reali.'),
       h('div', { class: 'rack' }, ...slots),
       editable ? h('div', { class: 'row' }, h('button', { type: 'button', onclick: () => emu.resetConfig() }, 'Configurazione di fabbrica')) : '',
-      h('p', { class: 'hint' }, 'Prossime schede: Big LCD T6963, Legacy LCD HD44780 + tastiera, LED test (65C22).'),
+      h('p', { class: 'hint' }, 'LCD legacy e LED test decodificano tutta la pagina $Dxxx come le schede reali: si usano da sole o spostate in un’altra pagina.'),
     );
   }
 

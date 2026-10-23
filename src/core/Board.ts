@@ -2,7 +2,7 @@
 
 import { StereoSink } from '../audio/StereoSink';
 
-export type BoardType = 'vdu' | 'serial' | 'keyboard' | 'joystick' | 'sdcard' | 'audio';
+export type BoardType = 'vdu' | 'serial' | 'keyboard' | 'joystick' | 'sdcard' | 'audio' | 'biglcd' | 'lcd' | 'leds';
 
 export type IrqLine = 'irq' | 'nmi' | 'none';
 
@@ -36,6 +36,8 @@ export interface Board {
   peek(offset: number): number;
   /** avanza di n cicli CPU (opzionale) */
   tick?(cycles: number): void;
+  /** accensione: contenuto casuale delle memorie, come i chip reali (opzionale) */
+  powerOn?(): void;
   /** fine del frame video (opzionale) */
   endFrame?(): void;
 }
