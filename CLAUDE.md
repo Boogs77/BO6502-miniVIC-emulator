@@ -1,153 +1,159 @@
-# BO6502 · miniVIC Emulator – istruzioni per Claude
+# BO6502 · miniVIC Emulator – instructions for Claude
 
-Emulatore web (TypeScript + Vite, nessuna dipendenza a runtime) di due computer 65C02 di Boogs77:
-- **BO6502**: computer modulare su backplane a 39 pin — https://github.com/Boogs77/BO6502_65C02-based_modular_computer
-- **miniVIC**: la versione compatta per i giochi — giochi in https://github.com/Boogs77/miniVIC_games
+Web emulator (TypeScript + Vite, no runtime dependencies) of two 65C02 computers by Boogs77:
+- **BO6502**: modular computer on a 39-pin backplane — https://github.com/Boogs77/BO6502_65C02-based_modular_computer
+- **miniVIC**: the compact version for games — games in https://github.com/Boogs77/miniVIC_games
 
 Repository: https://github.com/Boogs77/BO6502-miniVIC-emulator
-Online (GitHub Pages, deploy automatico a ogni push su main): https://boogs77.github.io/BO6502-miniVIC-emulator/
+Online (GitHub Pages, automatic deploy on every push to main): https://boogs77.github.io/BO6502-miniVIC-emulator/
 
-## Lingua e stile
-- Rispondi all'utente in **italiano**. Commenti nel codice e testi dell'interfaccia in italiano.
-- README e messaggi di commit in **inglese**, nello stile dei repository di Boogs77 (sezioni con emoji, separatori `---`, firma *Created by Boogs77 - 2026*).
-- Codice: classi piccole, commento d'intestazione in ogni file che spiega cosa emula e come; niente dipendenze npm a runtime.
-- `tsconfig` ha `erasableSyntaxOnly`: **niente `enum` e niente parameter properties** (`constructor(private x)`); `noUnusedLocals/Parameters` attivi.
+## Language and style
+- **Everything in the project is in English**: user interface, code comments, test and script messages,
+  workflows, skills, README, commit messages, this file. Do not add Italian text anywhere in the repository.
+- Talk to the user in **Italian** (their language) in the conversation.
+- README and commit messages in the style of the Boogs77 repositories (sections with emoji, `---` separators,
+  signature *Created by Boogs77 - 2026*).
+- Code: small classes, a header comment in every file explaining what it emulates and how; no npm runtime dependencies.
+- `tsconfig` has `erasableSyntaxOnly`: **no `enum` and no parameter properties** (`constructor(private x)`);
+  `noUnusedLocals/Parameters` are on.
 
-## Comandi
-| Comando | Cosa fa |
+## Commands
+| Command | What it does |
 | :--- | :--- |
-| `npm run dev` | server di sviluppo (http://localhost:5173) |
-| `npm run build` | typecheck + build statica in `dist/` (base relativa, va bene per GitHub Pages) |
-| `npm run typecheck` | solo `tsc --noEmit` |
-| `npm test` | test Node (esbuild): CPU, chip, sistema completo; `npm test -- minivic` per filtrare |
+| `npm run dev` | development server (http://localhost:5173) |
+| `npm run build` | typecheck + static build in `dist/` (relative base, works on GitHub Pages) |
+| `npm run typecheck` | `tsc --noEmit` only |
+| `npm test` | Node tests (esbuild): CPU, chips, full system; `npm test -- minivic` to filter |
 
-I test scrivono gli screenshot in `tests/out/*.png` (ignorati da git): **guardali** quando tocchi il video.
-Le suite CPU di Klaus Dormann (GPL) si scaricano da sole in `tests/fixtures/klaus/` (ignorata da git).
+The tests write screenshots to `tests/out/*.png` (ignored by git): **look at them** when you touch the video.
+Klaus Dormann's CPU suites (GPL) are downloaded automatically into `tests/fixtures/klaus/` (ignored by git).
 
-## Struttura
+## Structure
 ```
 src/
-  cpu/W65C02.ts         CPU: set WDC 65C02 completo + Rockwell (RMB/SMB/BBR/BBS), WAI/STP, NOP non documentati,
-                        cicli esatti (pagina, branch, +1 decimale), IRQ a livello, NMI sul fronte
-  cpu/disasm.ts         disassemblatore per il debugger
-  devices/TMS9918A.ts   VDP: rendering per riga, tutti i modi (G1, G2, Multicolor, Text, + combinazioni M3),
-                        sprite 8/16 + ingranditi, limite 4 per riga, flag 5S + numero, collisione, early clock,
-                        latch/read-ahead come il chip reale, F a fine riga 191, INT se R1 bit 5
-  devices/AY38910.ts    PSG a livello di contatori (tick = clock/8): toni 12 bit, rumore LFSR 17 bit,
-                        16 forme d'inviluppo, mixer R7, tabella volumi logaritmica misurata
-  devices/VIA6522.ts    W65C22: porte/DDR, CA1/CB1 con PCR, T1 one-shot/free-run (PB7), T2, IFR/IER, IRQ
-  devices/ACIA6551.ts   W65C51: TX immediato (TDRE sempre 1), coda RX, IRQ RX
-  devices/SDCard.ts     SD in SPI (SDSC, indirizzi a byte): CMD0/8/12/16/17/24/55/58 + ACMD41
-  devices/KeyboardPS2.ts scancode set 2 grezzi (E0, F0) sulla porta A + impulso su CA1
-  devices/T6963.ts      T6963C: comandi con parametri, auto write/read, OR/EXOR/AND, testo+grafica, CG RAM, cursore
-  devices/HD44780.ts    HD44780U: 8/4 bit (nibble su E in discesa), DDRAM 2 righe, CGRAM, shift, lettura BF/AC/dati
-  devices/font5x8.ts    font 5x8 ASCII estratto da VDP_PATTERNS del BIOS (crt_text_drv.s), usato dagli LCD
-  boards/Boards.ts      schede: VduBoard, SerialBoard, KeyboardBoard, JoystickBoard, SdCardBoard, AudioBoard, BaseBoard
-  boards/DisplayBoards.ts BigLcdBoard (T6963), LcdBoard (HD44780, cablaggio 4bit/8bit), LedBoard (16 LED)
-  core/Board.ts         interfaccia delle schede (base, size, irqLine, read/write/peek, tick, endFrame)
-  core/Machine.ts       bus a blocchi di 16 byte, RAM/ROM, buchi ROM $B000-$DFFF, linee IRQ (wired-OR) e NMI
-                        (fronte), frame NTSC da 262 righe, breakpoint
-  machines/profiles.ts  configurazioni BO6502 / miniVIC, BOARD_INFO, buildMachine()
-  machines/sdimage.ts   immagine SD formato make_sd.py (directory "BOGS" v3 a pagine)
-  machines/games.ts     elenco dei giochi in public/games
-  audio/StereoSink.ts   media dei tick PSG -> frequenza d'uscita, passa-alto 20 Hz (condensatori LM386)
-  audio/AudioOutput.ts  AudioWorklet (da Blob) con coda; riporta i campioni in coda per agganciare il ritmo
-  app/Emulator.ts       controller: macchina, accensione, ciclo RAF agganciato all'audio, input, caricamenti
-  app/settings.ts       impostazioni in localStorage (sempre in try/catch)
-  ui/                   App (layout), Screen, Displays (Big LCD, LCD 16x2, LED), Terminal + TerminalModel,
+  cpu/W65C02.ts         CPU: full WDC 65C02 set + Rockwell (RMB/SMB/BBR/BBS), WAI/STP, undocumented NOPs,
+                        exact cycles (page, branch, +1 decimal), level IRQ, edge NMI
+  cpu/disasm.ts         disassembler for the debugger
+  devices/TMS9918A.ts   VDP: scanline rendering, all modes (G1, G2, Multicolor, Text, + M3 combinations),
+                        8/16 sprites + magnified, 4 per line limit, 5S flag + number, collision, early clock,
+                        latch/read-ahead like the real chip, F at the end of line 191, INT if R1 bit 5
+  devices/AY38910.ts    PSG at counter level (tick = clock/8): 12-bit tones, 17-bit LFSR noise,
+                        16 envelope shapes, R7 mixer, measured logarithmic volume table
+  devices/VIA6522.ts    W65C22: ports/DDR, CA1/CB1 with PCR, T1 one-shot/free-run (PB7), T2, IFR/IER, IRQ
+  devices/ACIA6551.ts   W65C51: immediate TX (TDRE always 1), RX queue, RX IRQ
+  devices/SDCard.ts     SPI SD card (SDSC, byte addresses): CMD0/8/12/16/17/24/55/58 + ACMD41
+  devices/KeyboardPS2.ts raw set 2 scancodes (E0, F0) on port A + pulse on CA1
+  devices/T6963.ts      T6963C: commands with parameters, auto write/read, OR/EXOR/AND, text+graphics, CG RAM, cursor
+  devices/HD44780.ts    HD44780U: 8/4 bit (nibbles on falling E), 2-line DDRAM, CGRAM, shift, BF/AC/data reads
+  devices/font5x8.ts    5x8 ASCII font taken from the BIOS VDP_PATTERNS (crt_text_drv.s), used by the LCDs
+  boards/Boards.ts      boards: VduBoard, SerialBoard, KeyboardBoard, JoystickBoard, SdCardBoard, AudioBoard, BaseBoard
+  boards/DisplayBoards.ts BigLcdBoard (T6963), LcdBoard (HD44780, 4bit/8bit wiring), LedBoard (16 LEDs)
+  core/Board.ts         board interface (base, size, irqLine, read/write/peek, tick, powerOn, endFrame)
+  core/Machine.ts       bus in 16-byte blocks, RAM/ROM, ROM holes $B000-$DFFF, IRQ (wired-OR) and NMI (edge)
+                        lines, 262-line NTSC frame, breakpoints
+  machines/profiles.ts  BO6502 / miniVIC configurations, BOARD_INFO, buildMachine()
+  machines/sdimage.ts   SD image in make_sd.py format (paged "BOGS" v3 directory)
+  machines/games.ts     list of the games in public/games (generated)
+  audio/StereoSink.ts   averages PSG ticks -> output rate, 20 Hz high-pass (LM386 capacitors)
+  audio/AudioOutput.ts  AudioWorklet (from a Blob) with a queue; reports the queued samples to lock the pace
+  app/Emulator.ts       controller: machine, power, RAF loop locked to audio, input, loading
+  app/settings.ts       settings in localStorage (always in try/catch)
+  ui/                   App (layout), Screen, Displays (Big LCD, LCD 16x2, LEDs), Terminal + TerminalModel,
                         VirtualKeyboard, Joypad, panels/*
-public/demos/*.bin      demo delle schede (sorgenti in tests/fixtures/asm, assemblati con vasm)
-.github/workflows/pages.yml  build e deploy su GitHub Pages
-scripts/sync-games.mjs  sincronizzazione dei giochi da miniVIC_games
-public/roms/minivic.bin BIOS miniVIC 30.09.26 (WozMon + MS BASIC 1977 + menu SD) - ROM predefinita
-public/games/*.bin      giochi miniVIC (caricati a $0FD0, avvio a $1000)
-tests/                  run.mjs (runner), cpu/devices/displays/games/minivic.test.ts, helpers.ts (PNG, testo, tasti)
-_old/                   vecchio emulatore (non in git)
+public/roms/minivic.bin miniVIC BIOS 30.09.26 (WozMon + MS BASIC 1977 + SD menu) - default ROM
+public/games/*.bin      miniVIC games (loaded at $0FD0, started at $1000)
+public/demos/*.bin      board demos (sources in tests/fixtures/asm, assembled with vasm)
+scripts/sync-games.mjs  games sync from miniVIC_games
+.github/workflows/      pages.yml (build and deploy on GitHub Pages), sync-games.yml (daily games sync)
+.claude/                settings.json (SessionStart hook), skills/sync-minivic-games
+tests/                  run.mjs (runner), cpu/devices/displays/games/minivic/serial.test.ts, helpers.ts
+_old/                   old emulator (not in git)
 ```
 
-## Giochi: sincronizzazione con miniVIC_games
-- I giochi in `public/games` e l'elenco `src/machines/games.ts` (generato) vengono dal progetto `miniVIC_games`
-  (cartella locale `../MiniVIC Games` o GitHub). Script: `node scripts/sync-games.mjs [--check] [--github] [--prune]`.
-- Skill di progetto **`sync-minivic-games`** (`.claude/skills/`): controlla, sincronizza, verifica i titoli, pubblica.
-- Hook `SessionStart` (`.claude/settings.json`): all'avvio avvisa se ci sono giochi da sincronizzare.
-- Workflow `.github/workflows/sync-games.yml`: ogni giorno sincronizza da GitHub, testa, fa commit e ripubblica Pages.
-- Titoli e giocatori vengono dalla tabella del README dei giochi; non modificare `games.ts` a mano.
+## Games: sync with miniVIC_games
+- The games in `public/games` and the (generated) list `src/machines/games.ts` come from the `miniVIC_games`
+  project (local folder `../MiniVIC Games` or GitHub). Script: `node scripts/sync-games.mjs [--check] [--github] [--prune]`.
+- Project skill **`sync-minivic-games`** (`.claude/skills/`): checks, syncs, verifies the title screens, publishes.
+- `SessionStart` hook (`.claude/settings.json`): at startup it warns if there are games to sync.
+- `.github/workflows/sync-games.yml` workflow: every day it syncs from GitHub, tests, commits and republishes Pages.
+- Titles and player counts come from the table in the games README; do not edit `games.ts` by hand.
 
-## Le due macchine
-Hardware comune: W65C02S, RAM 32 KB `$0000-$7FFF`, ROM 32 KB `$8000-$FFFF` (con le pagine di I/O
-`$B000-$DFFF` escluse, come la ROM multi con J-CS3/4/5 su VCC), VDU, seriale, tastiera, joystick, SD, audio.
+## The two machines
+Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with the I/O pages
+`$B000-$DFFF` excluded, like the multi ROM with J-CS3/4/5 on VCC), VDU, serial, keyboard, joysticks, SD, audio.
 
-| Scheda | Chip | BO6502 | miniVIC |
+| Board | Chip | BO6502 | miniVIC |
 | :--- | :--- | :--- | :--- |
-| VDU | TMS9918A (A0: 0 dati, 1 registri/stato) | `$B000`, INT → **IRQ** | `$B000`, INT → **NMI** |
-| Serial I/O | W65C51 (`$x000` dati, `+1` stato, `+2` comando, `+3` controllo) | `$C000` | `$C000` |
-| KEYb | W65C22 + PS/2 (porta A = scancode, CA1 = KB_INT) | `$D180` | `$D180` |
-| Joystick | W65C22 (PA = P1, PB = P2, attivi bassi) | `$D1A0` | `$D580` |
+| VDU | TMS9918A (A0: 0 data, 1 registers/status) | `$B000`, INT → **IRQ** | `$B000`, INT → **NMI** |
+| Serial I/O | W65C51 (`$x000` data, `+1` status, `+2` command, `+3` control) | `$C000` | `$C000` |
+| KEYb | W65C22 + PS/2 (port A = scancode, CA1 = KB_INT) | `$D180` | `$D180` |
+| Joystick | W65C22 (PA = P1, PB = P2, active low) | `$D1A0` | `$D580` |
 | SD Card | W65C22 (PA1 MISO, PA2 MOSI, PA3 SCK, PA4 CS) | `$D1B0` | `$DD80` |
-| Audio | 2x AY-3-8910 (A0: 0 latch, 1 dato; A2: 0 destro, 1 sinistro) | `$D1C0` | `$D380` |
-| Big LCD | W65C22 + T6963C 160x128 (PB dati; PA0 /RD, PA1 /WR, PA2 /CE, PA3 C/D, PA4 /HALT, PA5 /RST) | `$D190` | — |
-| LCD legacy | W65C22 + HD44780 16x2, decodifica tutta `$Dxxx` (spenta di default) | `$D000` | — |
-| LED test | W65C22, 16 LED (PA, PB; acceso = uscita a 1), decodifica tutta `$Dxxx` (spenta di default) | `$D000` | — |
+| Audio | 2x AY-3-8910 (A0: 0 latch, 1 data; A2: 0 right, 1 left) | `$D1C0` | `$D380` |
+| Big LCD | W65C22 + T6963C 160x128 (PB data; PA0 /RD, PA1 /WR, PA2 /CE, PA3 C/D, PA4 /HALT, PA5 /RST) | `$D190` | — |
+| Legacy LCD | W65C22 + HD44780 16x2, decodes the whole `$Dxxx` page (off by default) | `$D000` | — |
+| LED test | W65C22, 16 LEDs (PA, PB; lit = output at 1), decodes the whole `$Dxxx` page (off by default) | `$D000` | — |
 
-- Il BO6502 è configurabile nel rack (schede, indirizzi, linea INT, clock 0,5/1/2 MHz) **solo a macchina spenta**; il miniVIC è fisso.
-- Joystick: bit 0 su, 1 giù, 2 sinistra, 3 destra, 4 tasto 1, 5 tasto 2 (0 = premuto sui pin).
-- Clock dei PSG = clock della CPU (1 MHz: periodo = 1.000.000 / (16 × f)).
-- **Decisione 2026-10-23**: la scheda audio del BO6502 usa la stessa decodifica del miniVIC (solo l'indirizzo cambia);
-  il README del modulo AUDIO (A0 = BC1, A1 = BDIR, A2 = 0 sinistro) va verificato e corretto dopo con l'utente.
-- LCD legacy: cablaggio '4bit' = `lcd.s` del BIOS (PB0-3 → DB4-7, PB4 RS, PB5 RW, PB6 E); '8bit' = README della
-  scheda LCD_KEYb (PB dati, RS/RW/E su PA5/PA6/PA7, ipotesi Ben Eater). La parte tastiera della scheda non e' emulata.
-- Bus: con schede sovrapposte risponde la prima nell'ordine del rack (`BO6502_BOARD_ORDER`); il rack segnala il conflitto.
-- Big LCD: la RAM del T6963 e' casuale all'accensione (`Board.powerOn()`), come sul display reale.
-- RAM all'accensione: **azzerata di default** (come `minivic.js`), opzione "casuale" nel pannello Rack.
-  Motivo (2026-10-23): alcuni giochi leggono variabili prima di inizializzarle, perche' abilitano l'INT del VDP
-  quando il flag F e' gia' alto (il BIOS non legge mai lo stato) e l'NMI parte subito:
-  `centipede.asm` (RESET scrive R1=$E6 prima che TITLE azzeri `QGO` $79 -> coda casuale, schermo nero),
-  `the_warriors.asm` (`SAT_BUFFER` $0260 copiato dall'NMI prima di essere scritto), `asteroids.asm` (`WAVE` $91).
-  Da segnalare/correggere nei giochi: inizializzare le variabili dell'NMI (o leggere VREG) prima di abilitare l'INT.
+- The BO6502 is configurable in the rack (boards, addresses, INT line, 0.5/1/2 MHz clock) **only with the machine off**; the miniVIC is fixed.
+- Joystick: bit 0 up, 1 down, 2 left, 3 right, 4 button 1, 5 button 2 (0 = pressed on the pins).
+- PSG clock = CPU clock (1 MHz: period = 1,000,000 / (16 × f)).
+- **Decision 2026-10-23**: the BO6502 audio board uses the same decoding as the miniVIC (only the address changes);
+  the AUDIO module README (A0 = BC1, A1 = BDIR, A2 = 0 left) must be checked and fixed later with the user.
+- Legacy LCD: '4bit' wiring = BIOS `lcd.s` (PB0-3 → DB4-7, PB4 RS, PB5 RW, PB6 E); '8bit' = LCD_KEYb board
+  README (PB data, RS/RW/E on PA5/PA6/PA7, Ben Eater style guess). The keyboard part of that board is not emulated.
+- Bus: with overlapping boards the first one in rack order answers (`BO6502_BOARD_ORDER`); the rack shows the conflict.
+- Big LCD: the T6963 RAM is random at power-on (`Board.powerOn()`), like on the real display.
+- RAM at power-on: **cleared by default** (like `minivic.js`), "random" option in the Rack panel.
+  Reason (2026-10-23): some games read variables before initialising them, because they enable the VDP INT
+  while the F flag is already set (the BIOS never reads the status) and the NMI fires immediately:
+  `centipede.asm` (RESET writes R1=$E6 before TITLE clears `QGO` $79 -> random queue, black screen),
+  `the_warriors.asm` (`SAT_BUFFER` $0260 copied by the NMI before being written), `asteroids.asm` (`WAVE` $91).
+  To report/fix in the games (the user asked not to fix them for now): initialise the NMI variables
+  (or read VREG) before enabling the INT.
 
-## BIOS miniVIC (sorgente: `G:\Il mio Drive\Progetti\6205\001 - MSBASIC\023 - ...\msbasic\`)
-- Vettori: RESET `$E000` (menu), NMI `$A785` → `PHA PHX PHY / JSR $0FD0 / LDA $B001 / PLY PLX PLA / RTI`,
-  IRQ `$A9A3` → `JSR $0FA0` (trampolini in RAM forniti dal programma).
-- Menu: 1 WozMon (`$FE00`), 2 MS BASIC (`$8000`), 3 programmi da SD, 4 informazioni.
-- `CHRIN`: ACIA, poi buffer tastiera `$0400` (puntatori `$0306/$0307`, flag `$0308`); la tastiera è letta
-  in **polling** del flag CA1 (`IFR $D18D` bit 1) — nessun IRQ abilitato. `CHROUT` scrive su VDP (modo Text 40x24) e ACIA.
-- SD: `$DD81/$DD83` cablati nel BIOS. Con il BO6502 (SD a `$D1B0`) il menu SD funziona solo con una ROM
-  compilata per quell'indirizzo, oppure spostando la scheda SD a `$DD80` nel rack.
-- Formato SD (make_sd.py): programma N a `(N-1)*$8000`, dati a `+$1000`; pagina directory P nel primo settore
-  del blocco P: `"BOGS"`, versione 3, n. programmi, flag RUN, parametri (load, len, entry) a `+16+i*8`, nomi a `+96+i*32`.
-- Il caricamento da SD è lento come sul vero hardware (~6 s per 23 KB): è SPI bit-bang.
+## miniVIC BIOS (source: `G:\Il mio Drive\Progetti\6205\001 - MSBASIC\023 - ...\msbasic\`)
+- Vectors: RESET `$E000` (menu), NMI `$A785` → `PHA PHX PHY / JSR $0FD0 / LDA $B001 / PLY PLX PLA / RTI`,
+  IRQ `$A9A3` → `JSR $0FA0` (RAM trampolines provided by the program).
+- Menu: 1 WozMon (`$FE00`), 2 MS BASIC (`$8000`), 3 SD programs, 4 information.
+- `CHRIN`: ACIA, then the keyboard buffer `$0400` (pointers `$0306/$0307`, flags `$0308`); the keyboard is read
+  by **polling** the CA1 flag (`IFR $D18D` bit 1) — no IRQ enabled. `CHROUT` writes to the VDP (Text mode 40x24) and the ACIA.
+- SD: `$DD81/$DD83` hard-wired in the BIOS. With the BO6502 (SD at `$D1B0`) the SD menu works only with a ROM
+  built for that address, or by moving the SD board to `$DD80` in the rack.
+- SD format (make_sd.py): program N at `(N-1)*$8000`, data at `+$1000`; directory page P in the first sector
+  of block P: `"BOGS"`, version 3, program count, RUN flags, parameters (load, len, entry) at `+16+i*8`, names at `+96+i*32`.
+- Loading from SD is as slow as on the real hardware (~6 s for 23 KB): it is bit-banged SPI.
 
-## Terminale seriale
-- Impaginazione di default **'crt'**: riproduce `print_crt_ch` del BIOS (crt_text_drv.s), cosi' la seriale mostra la
-  stessa pagina del VDU: 40x24, LF = a capo, CR ignorato, a capo automatico a 40 colonne, dopo la riga 24 si riparte
-  dalla riga 0 con lo schermo pulito, ESC (+ sequenza ANSI) = pulisci e torna in alto.
-- 'ansi' = terminale VT100 80x24 con scorrimento (come un PC collegato alla DB9).
-- `tests/serial.test.ts` confronta CRT e seriale ogni 5 frame (tollera un carattere in transito: CHROUT scrive prima sul VDP).
+## Serial terminal
+- Default **'crt'** layout: reproduces the BIOS `print_crt_ch` (crt_text_drv.s), so the serial port shows the same
+  page as the VDU: 40x24, LF = new line, CR ignored, automatic wrap at 40 columns, after row 24 it restarts from
+  row 0 with a cleared screen, ESC (+ ANSI sequence) = clear and go home.
+- 'ansi' = VT100 80x24 terminal with scrolling (like a PC connected to the DB9).
+- `tests/serial.test.ts` compares CRT and serial every 5 frames (tolerates one character in flight: CHROUT writes to the VDP first).
 
-## Temporizzazione
-- Frame NTSC: 262 righe, 59,92 Hz; cicli per riga = clock / (59,922743 × 262) (≈ 63,7 a 1 MHz).
-- Alla fine di ogni riga il VDP disegna la riga; alla fine della 191 alza F (e INT se abilitato).
-- Le schede con `tick()` (VIA, tastiera) avanzano dopo ogni istruzione; l'audio si sincronizza al ciclo
-  corrente prima di ogni accesso alla scheda audio e a fine frame.
-- Nel browser il ritmo lo dà la coda audio (~70 ms); senza audio l'orologio del browser.
+## Timing
+- NTSC frame: 262 lines, 59.92 Hz; cycles per line = clock / (59.922743 × 262) (≈ 63.7 at 1 MHz).
+- At the end of every line the VDP draws the line; at the end of line 191 it raises F (and INT if enabled).
+- Boards with `tick()` (VIA, keyboard) advance after every instruction; the audio syncs to the current cycle
+  before every access to the audio board and at the end of the frame.
+- In the browser the pace is set by the audio queue (~70 ms); without audio by the browser clock.
 
-## Interfaccia
-- Barra: scelta macchina (BO6502 / miniVIC), POWER, RESET, Pausa, velocità, "Tasti → Tastiera/Joystick", mute, schermo intero.
-- Tastiera PS/2 virtuale (layout US come la tabella del BIOS; Shift/Ctrl/Alt agganciati con il mouse) e due
-  joystick SMS cliccabili (croce trascinabile anche in diagonale, multi-touch). Si illuminano anche con tastiera fisica e gamepad.
-- Tasti fisici in modo joystick: P1 frecce + Z/Spazio (1) + X (2); P2 WASD + F (1) + G (2). Gamepad API: primi due pad.
-- Pannelli: Giochi, Media (ROM, programma .bin, dump WozMon, SD .img, creazione SD), Rack, Audio (VU L/R,
-  registri e note dei due AY, mute per canale), Seriale (impaginazione 'crt' o 'ansi'), Debug (CPU, disassemblato, passo/frame,
-  breakpoint, memoria CPU/VRAM, VDP, VIA).
+## User interface
+- Top bar: machine choice (BO6502 / miniVIC), POWER, RESET, Pause, speed, "Keys → Keyboard/Joystick", mute, fullscreen.
+- Virtual PS/2 keyboard (US layout like the BIOS table; Shift/Ctrl/Alt latched with the mouse) and two clickable
+  SMS joysticks (D-pad draggable diagonally too, multi-touch). They also light up with the physical keyboard and gamepads.
+- Physical keys in joystick mode: P1 arrows + Z/Space (1) + X (2); P2 WASD + F (1) + G (2). Gamepad API: first two pads.
+- Panels: Games, Media (ROM, .bin program, WozMon dump, SD .img, SD builder, board demos), Rack, Audio (L/R VU,
+  registers and notes of the two AYs, per-channel mute), Serial ('crt' or 'ansi' layout), Debug (CPU, disassembly,
+  step/frame, breakpoints, CPU/VRAM memory, VDP, VIA).
 
-## Da fare (prossimi passi)
-- Schede mancanti: tastiera della scheda LCD legacy, Monitor (Arduino Mega sniffer).
-- T6963: modo attributi testo, screen peek/copy, font 6x8 (FS = 1); HD44780: tempi di busy reali, CGROM giapponese A00.
-- Verificare sugli schemi: lettura dei registri AY, decodifica della scheda audio BO6502 (il README del modulo
-  indica A0 = BC1, A1 = BDIR, A2 = 0 sinistro, diversa dal miniVIC), linea IRQ di ACIA/VIA.
-- Salvataggio/ripristino dello stato, scrittura SD persistente, timing VRAM del TMS (accessi troppo ravvicinati).
+## To do (next steps)
+- Missing boards: keyboard of the legacy LCD board, Monitor (Arduino Mega sniffer).
+- T6963: text attribute mode, screen peek/copy, 6x8 font (FS = 1); HD44780: real busy timings, Japanese A00 CGROM.
+- Check on the schematics: AY register reads, BO6502 audio board decoding (the module README says
+  A0 = BC1, A1 = BDIR, A2 = 0 left, different from the miniVIC), IRQ line of ACIA/VIA.
+- Save/restore state, persistent SD writes, TMS VRAM timing (accesses too close together).
 
-## Regole
-- Prima di cambiare CPU, VDP o AY esegui `npm test` e guarda gli screenshot in `tests/out/`.
-- Un comportamento hardware non documentato va chiesto all'utente, non inventato: segnalo in "Da fare".
-- Commit e push solo quando l'utente lo chiede.
+## Rules
+- Before changing the CPU, VDP or AY run `npm test` and look at the screenshots in `tests/out/`.
+- Undocumented hardware behaviour must be asked to the user, not invented: list it under "To do".
+- Commit and push only when the user asks (the sync-minivic-games skill is authorised to publish games).

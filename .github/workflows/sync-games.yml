@@ -1,13 +1,13 @@
-# Sincronizzazione automatica dei giochi da github.com/Boogs77/miniVIC_games
+# Automatic sync of the games from github.com/Boogs77/miniVIC_games
 #
-# Ogni giorno (e a richiesta) confronta i giochi pubblicati con quelli dell'emulatore.
-# Se ci sono giochi nuovi o aggiornati: li copia, controlla che ogni gioco arrivi al titolo,
-# fa commit su main e ripubblica il sito su GitHub Pages.
+# Every day (and on demand) compares the published games with the emulator ones.
+# If there are new or updated games: copies them, checks that every game reaches its title,
+# commits to main and republishes the site on GitHub Pages.
 name: Sync miniVIC games
 
 on:
   schedule:
-    - cron: '17 5 * * *'      # ogni giorno alle 05:17 UTC
+    - cron: '17 5 * * *'      # every day at 05:17 UTC
   workflow_dispatch:
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
         run: |
           node scripts/sync-games.mjs --github --json | tee sync.json
           echo "changed=$(node -p "require('./sync.json').changed")" >> "$GITHUB_OUTPUT"
-          node scripts/sync-games.mjs --github --check   # dopo la sincronizzazione deve risultare allineato
+          node scripts/sync-games.mjs --github --check   # after the sync it must be in sync
           rm sync.json
 
       - name: Check that every game reaches its title screen

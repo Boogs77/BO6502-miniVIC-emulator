@@ -1,8 +1,8 @@
  .org $1000
 
-; Definizione delle porte del 65C22
-PORTB = $d190        ; Indirizzo per i dati (8 bit)
-PORTA = $d191        ; Indirizzo per le linee di controllo (4 bit: CS, RW, RS, RESET)
+; 65C22 port definitions
+PORTB = $d190        ; Data address (8 bit)
+PORTA = $d191        ; Control lines address (4 bit: CS, RW, RS, RESET)
 DDRB  = $d192
 DDRA  = $d193
 
@@ -16,7 +16,7 @@ RS    = $20          ; %00100000 PA5 ~RST
 
 START:
     ; Init 65c22
-    LDA #%11111111 ; Set all pins on port B to output dati (8 bit)
+    LDA #%11111111 ; Set all pins on port B to output data (8 bit)
     STA DDRB
     LDA #%11111111 ; Set all pins on port A to output (5 bit: ~RD, ~WR, ~CE, C~D, ~RST)
     STA DDRA
@@ -119,7 +119,7 @@ WRITE_CMD:
     PHA                     
     LDA #%00111011         ; PA5 = 1 (/RST Inactive), PA3 = 1 (command), 
                            ; PA2 = 0 (/CE Active), PA1 = 1 (/WR Inactive), 
-                           ; PA0 = 1 (/RD alto) 
+                           ; PA0 = 1 (/RD high) 
     STA PORTA
     PLA                    ; Load command from stack
     STA PORTB              ; command to PORTB
@@ -139,7 +139,7 @@ WRITE_DATA:
     PHA                    
     LDA #%00110011         ; PA5 = 1 (/RST Inactive), PA3 = 0 (data), 
                            ; PA2 = 0 (/CE Active), PA1 = 1 (/WR Inactive), 
-                           ; PA0 = 1 (/RD alto) 
+                           ; PA0 = 1 (/RD high) 
     STA PORTA
     PLA                    ; Load command from stack
     STA PORTB              ; data to PORTB
@@ -198,7 +198,7 @@ CLEARDISPLAY:
     JSR WRITE_DATA    
     LDA #$08       
     JSR WRITE_DATA 
-    LDA #$24          ; SET ADDRESS POINTER (posizione 0x0800)
+    LDA #$24          ; SET ADDRESS POINTER (position 0x0800)
     JSR WRITE_CMD 
 
     LDA #$B0
@@ -341,7 +341,7 @@ SET_ADD_P00:
     JSR WRITE_DATA    
     LDA #$00       
     JSR WRITE_DATA 
-    LDA #$24          ; SET ADDRESS POINTER (posizione 0,0)
+    LDA #$24          ; SET ADDRESS POINTER (position 0,0)
     JSR WRITE_CMD 
     PLA
     RTS
@@ -375,7 +375,7 @@ MOVE_ROW2:
   .org $1270
 DIF_WRITE_A:
     JSR SET_ADD_P00
-    LDA #$21          ; 'A' per T6963C
+    LDA #$21          ; 'A' for the T6963C
     JSR WRITE_DATA
     LDA #$C0          ; DATA WRITE AND INCREMENT
     JSR WRITE_CMD

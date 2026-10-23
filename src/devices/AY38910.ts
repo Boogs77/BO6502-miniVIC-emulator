@@ -1,19 +1,19 @@
 // AY-3-8910 - Programmable Sound Generator
 //
-// Emulazione a livello di contatori interni, al ritmo di clock/8:
-//   toni     3 canali, periodo a 12 bit, f = clock / (16 * TP)
-//   rumore   LFSR a 17 bit, periodo a 5 bit, f = clock / (16 * NP)
-//   inviluppo 16 passi, 16 forme (R13), periodo a 16 bit, passo = clock / (16 * EP)
-//   mixer    R7: bit 0-2 toni spenti, bit 3-5 rumore spento (1 = spento)
-//   volume   tabella logaritmica a 16 livelli misurata sul chip reale
+// Emulation at the level of the internal counters, at a clock/8 rate:
+//   tones    3 channels, 12-bit period, f = clock / (16 * TP)
+//   noise    17-bit LFSR, 5-bit period, f = clock / (16 * NP)
+//   envelope 16 steps, 16 shapes (R13), 16-bit period, step = clock / (16 * EP)
+//   mixer    R7: bits 0-2 tones off, bits 3-5 noise off (1 = off)
+//   volume   16-level logarithmic table measured on the real chip
 //
-// Il chip avanza con tick() (un tick = 8 clock del PSG): lo chiama la scheda audio, che
-// porta i suoi chip al ciclo CPU corrente prima di ogni scrittura, cosi' i cambi di
-// registro cadono nel punto giusto del suono. out[] contiene l'uscita dei 3 canali (0..1).
+// The chip advances with tick() (one tick = 8 PSG clocks): it is called by the audio board,
+// which brings its chips to the current CPU cycle before every write, so register changes
+// land at the right point of the sound. out[] holds the output of the 3 channels (0..1).
 
 const REG_MASK = [0xFF, 0x0F, 0xFF, 0x0F, 0xFF, 0x0F, 0x1F, 0xFF, 0x1F, 0x1F, 0x1F, 0xFF, 0xFF, 0x0F, 0xFF, 0xFF];
 
-/** livelli DAC dell'AY-3-8910 (normalizzati, misure di "ayumi") */
+/** AY-3-8910 DAC levels (normalised, "ayumi" measurements) */
 export const AY_LEVELS = [
   0.0, 0.00999465934234, 0.0144502937362, 0.0210574502174,
   0.0307011520562, 0.0455481803616, 0.0644998855573, 0.107362478065,
@@ -23,7 +23,7 @@ export const AY_LEVELS = [
 
 export class AY38910 {
   readonly regs = new Uint8Array(16);
-  /** registro selezionato dall'ultimo latch */
+  /** register selected by the last latch */
   selected = 0;
 
   private toneCount = [0, 0, 0];
@@ -39,10 +39,10 @@ export class AY38910 {
   private envHolding = false;
   private envVolume = 0;
 
-  /** uscita corrente dei 3 canali (0..1), aggiornata a ogni tick */
+  /** current output of the 3 channels (0..1), updated on every tick */
   readonly out = new Float32Array(3);
 
-  /** canali silenziati dall'interfaccia (debug) */
+  /** channels muted from the UI (debug) */
   readonly muted = [false, false, false];
 
   reset(): void {
@@ -58,7 +58,7 @@ export class AY38910 {
   }
 
   latch(v: number): void {
-    this.selected = v & 0x0F;   // i bit alti selezionano il chip (sempre 0 sull'AY standard)
+    this.selected = v & 0x0F;   // the high bits select the chip (always 0 on the standard AY)
   }
 
   writeData(v: number): void {
@@ -88,11 +88,11 @@ export class AY38910 {
     }
   }
 
-  /** un tick = 8 clock del PSG */
+  /** one tick = 8 PSG clocks */
   tick(): void {
     const r = this.regs;
 
-    // toni: il contatore conta fino al periodo e inverte l'uscita
+    // tones: the counter counts up to the period and toggles the output
     for (let ch = 0; ch < 3; ch++) {
       const period = (r[ch * 2] | (r[ch * 2 + 1] << 8)) || 1;
       if (++this.toneCount[ch] >= period) {
@@ -101,7 +101,7 @@ export class AY38910 {
       }
     }
 
-    // rumore: avanza a clock/16
+    // noise: advances at clock/16
     this.noisePrescale ^= 1;
     if (this.noisePrescale) {
       const np = r[6] || 1;
@@ -112,7 +112,7 @@ export class AY38910 {
       }
     }
 
-    // inviluppo: un passo ogni 16*EP clock = 2*EP tick
+    // envelope: one step every 16*EP clocks = 2*EP ticks
     const ep = (r[11] | (r[12] << 8)) || 1;
     if (++this.envCount >= ep * 2) {
       this.envCount = 0;
@@ -132,7 +132,7 @@ export class AY38910 {
       this.envVolume = this.envStep ^ this.envAttack;
     }
 
-    // mixer e volumi
+    // mixer and volumes
     const mixer = r[7];
     const noise = this.rng & 1;
     for (let ch = 0; ch < 3; ch++) {

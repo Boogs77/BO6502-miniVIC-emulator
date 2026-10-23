@@ -1,5 +1,5 @@
-// Font 5x8 per i display LCD (caratteri ASCII $20-$7E, 8 byte per carattere, pixel nei bit 7-3).
-// Estratto dalla tabella VDP_PATTERNS del BIOS BO6502 (crt_text_drv.s), lo stesso font del modo Text del VDU.
+// 5x8 font for the LCD displays (ASCII characters $20-$7E, 8 bytes per character, pixels in bits 7-3).
+// Taken from the VDP_PATTERNS table of the BO6502 BIOS (crt_text_drv.s), the same font as the VDU Text mode.
 
 export const FONT_FIRST = 0x20;
 
@@ -101,7 +101,7 @@ export const FONT_5X8 = new Uint8Array([
   0x00, 0x00, 0x24, 0x00, 0x00, 0x42, 0x3C, 0x00,  // '~'
 ]);
 
-/** righe (8 byte) del carattere c; caratteri fuori tabella = spazio */
+/** rows (8 bytes) of character c; characters outside the table = space */
 export function glyph(c: number): Uint8Array {
   const i = c >= FONT_FIRST && c < FONT_FIRST + 95 ? c - FONT_FIRST : 0;
   return FONT_5X8.subarray(i * 8, i * 8 + 8);

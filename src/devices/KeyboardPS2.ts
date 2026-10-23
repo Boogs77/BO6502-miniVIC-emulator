@@ -1,15 +1,15 @@
-// Tastiera PS/2 (AT, DIN 5) della scheda KEYb
+// PS/2 keyboard (AT, DIN 5) of the KEYb board
 //
-// Sulla scheda reale due 74HCT595 convertono il flusso seriale della tastiera in un byte
-// sulla porta A della VIA e KB_INT arriva su CA1: alla CPU arrivano gli scancode grezzi
-// del set 2 (codice di pressione, F0 + codice al rilascio, prefisso E0 per i tasti estesi).
-// Un byte PS/2 dura circa 1 ms: i byte in coda si presentano uno alla volta, il successivo
-// quando la CPU ha letto il precedente (o comunque dopo un tempo massimo, come sul
-// circuito reale, dove un byte non letto viene sovrascritto).
+// On the real board two 74HCT595s turn the keyboard serial stream into a byte on the
+// VIA port A and KB_INT goes to CA1: the CPU receives the raw set 2 scancodes
+// (make code, F0 + code on release, E0 prefix for the extended keys).
+// A PS/2 byte takes about 1 ms: queued bytes are presented one at a time, the next one
+// when the CPU has read the previous one (or anyway after a maximum time, as on the
+// real circuit, where an unread byte is overwritten).
 
 import { VIA6522 } from './VIA6522';
 
-/** KeyboardEvent.code -> scancode set 2 (0x100 = prefisso E0) */
+/** KeyboardEvent.code -> scancode set 2 (0x100 = E0 prefix) */
 export const PS2_SET2: Record<string, number> = {
   Escape: 0x76, F1: 0x05, F2: 0x06, F3: 0x04, F4: 0x0C, F5: 0x03, F6: 0x0B, F7: 0x83,
   F8: 0x0A, F9: 0x01, F10: 0x09, F11: 0x78, F12: 0x07,
@@ -34,15 +34,15 @@ export const PS2_SET2: Record<string, number> = {
   ScrollLock: 0x7E,
 };
 
-const BYTE_CYCLES = 1100;       // ~1,1 ms a 1 MHz per un byte PS/2
-const MAX_WAIT_CYCLES = 30000;  // dopo ~30 ms il byte successivo sovrascrive comunque
+const BYTE_CYCLES = 1100;       // ~1.1 ms at 1 MHz for one PS/2 byte
+const MAX_WAIT_CYCLES = 30000;  // after ~30 ms the next byte overwrites it anyway
 
 export class KeyboardPS2 {
   private queue: number[] = [];
   private wait = 0;
   private presented = false;
   private readonly via: VIA6522;
-  /** tasti premuti (per non ripetere il codice di pressione) */
+  /** pressed keys (so the make code is not repeated) */
   private readonly down = new Set<string>();
 
   constructor(via: VIA6522) {
@@ -56,7 +56,7 @@ export class KeyboardPS2 {
     this.wait = 0;
   }
 
-  /** pressione (repeat = ripetizione automatica del browser) */
+  /** key press (repeat = browser auto-repeat) */
   keyDown(code: string, repeat = false): boolean {
     const sc = PS2_SET2[code];
     if (sc === undefined) return false;
@@ -85,11 +85,11 @@ export class KeyboardPS2 {
     return this.down.has(code);
   }
 
-  /** avanza di n cicli CPU: presenta il prossimo byte sulla porta A */
+  /** advances by n CPU cycles: presents the next byte on port A */
   tick(n: number): void {
     if (this.wait > 0) this.wait -= n;
     if (this.presented) {
-      // il byte e' stato letto quando la CPU ha azzerato il flag CA1
+      // the byte was read when the CPU cleared the CA1 flag
       const read = (this.via.ifr & 0x02) === 0;
       if (!read && this.wait > -MAX_WAIT_CYCLES) return;
       this.presented = false;

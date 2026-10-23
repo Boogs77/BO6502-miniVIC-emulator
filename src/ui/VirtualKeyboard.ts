@@ -1,7 +1,7 @@
-// Tastiera PS/2 virtuale (layout US, come la tabella scancode del BIOS)
+// Virtual PS/2 keyboard (US layout, like the BIOS scancode table)
 //
-// Con il mouse: tenere premuto un tasto = tasto premuto (codice di pressione, poi F0 + codice
-// al rilascio). Shift, Ctrl e Alt restano agganciati fino al tasto successivo.
+// With the mouse: holding a key down = key pressed (make code, then F0 + code on
+// release). Shift, Ctrl and Alt stay latched until the next key.
 
 import { h } from './dom';
 
@@ -39,7 +39,7 @@ export class VirtualKeyboard {
   private sink: KeySink | null = null;
 
   constructor() {
-    this.el = h('div', { class: 'vkeyboard', role: 'group', 'aria-label': 'Tastiera PS/2 virtuale' });
+    this.el = h('div', { class: 'vkeyboard', role: 'group', 'aria-label': 'Virtual PS/2 keyboard' });
     for (const row of ROWS) {
       const r = h('div', { class: 'vk-row' });
       for (const [code, label, shifted, width = 1] of row) {
@@ -90,7 +90,7 @@ export class VirtualKeyboard {
     el.addEventListener('pointercancel', up);
   }
 
-  /** evidenzia i tasti premuti (anche dalla tastiera fisica) */
+  /** highlights the pressed keys (also from the physical keyboard) */
   update(): void {
     for (const [code, els] of this.keys) {
       const down = this.sink?.isDown(code) ?? false;

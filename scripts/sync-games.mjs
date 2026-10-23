@@ -1,20 +1,20 @@
 #!/usr/bin/env node
-// sync-games.mjs - porta nell'emulatore i giochi del progetto miniVIC_games
+// sync-games.mjs - brings the games of the miniVIC_games project into the emulator
 //
-//   node scripts/sync-games.mjs            copia i giochi nuovi o cambiati e rigenera src/machines/games.ts
-//   node scripts/sync-games.mjs --check    solo controllo: exit 0 = allineati, 2 = ci sono differenze
+//   node scripts/sync-games.mjs            copies new or changed games and regenerates src/machines/games.ts
+//   node scripts/sync-games.mjs --check    check only: exit 0 = in sync, 2 = there are differences
 //   node scripts/sync-games.mjs --check --hook
-//                                          come --check, ma stampa un avviso solo se ci sono novita'
-//                                          (per l'hook SessionStart di Claude Code) ed esce sempre con 0
-//   --source <cartella>                    cartella del progetto dei giochi (default: MINIVIC_GAMES_DIR,
-//                                          poi "../MiniVIC Games" accanto a questo repository)
-//   --github                               legge da github.com/Boogs77/miniVIC_games invece che in locale
-//   --prune                                toglie anche i giochi che non esistono piu' nella sorgente
-//   --json                                 stampa il riepilogo in JSON
+//                                          like --check, but prints a notice only when there is news
+//                                          (for the Claude Code SessionStart hook) and always exits with 0
+//   --source <folder>                      folder of the games project (default: MINIVIC_GAMES_DIR,
+//                                          then "../MiniVIC Games" next to this repository)
+//   --github                               reads from github.com/Boogs77/miniVIC_games instead of locally
+//   --prune                                also removes the games that no longer exist in the source
+//   --json                                 prints the summary as JSON
 //
-// Sorgente: bin/<gioco>.bin (caricati a $0FD0, avvio a $1000) e la tabella del README:
-//   | `tank.asm` | **Tank vs Tank** | 2 | descrizione |
-// L'ordine dei giochi e' quello del README; i giochi senza riga nel README vanno in fondo.
+// Source: bin/<game>.bin (loaded at $0FD0, started at $1000) and the README table:
+//   | `tank.asm` | **Tank vs Tank** | 2 | description |
+// The game order is the README order; games without a README row go last.
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -34,7 +34,7 @@ const hook = flag('--hook');
 
 const sha = data => createHash('sha1').update(data).digest('hex');
 
-/** titoli e giocatori dalla tabella del README dei giochi */
+/** titles and players from the table in the games README */
 function parseReadme(text) {
   const meta = new Map();
   for (const line of text.split(/\r?\n/)) {
@@ -44,7 +44,7 @@ function parseReadme(text) {
   return meta;
 }
 
-/** giochi della sorgente: [{ name, data, title, players }] nell'ordine del README */
+/** source games: [{ name, data, title, players }] in README order */
 async function readSource() {
   let readme = '';
   const bins = new Map();
@@ -53,7 +53,7 @@ async function readSource() {
     const headers = { 'User-Agent': 'bo6502-emulator-sync' };
     if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
     const list = await (await fetch(`${api}/bin`, { headers })).json();
-    if (!Array.isArray(list)) throw new Error(`GitHub: ${list.message ?? 'risposta inattesa'}`);
+    if (!Array.isArray(list)) throw new Error(`GitHub: ${list.message ?? 'unexpected response'}`);
     for (const f of list.filter(f => f.name.endsWith('.bin'))) {
       const r = await fetch(f.download_url, { headers });
       bins.set(f.name.replace(/\.bin$/, ''), new Uint8Array(await r.arrayBuffer()));
@@ -61,7 +61,7 @@ async function readSource() {
     readme = await (await fetch(`https://raw.githubusercontent.com/${REPO}/main/README.md`, { headers })).text();
   } else {
     const src = opt('--source') ?? process.env.MINIVIC_GAMES_DIR ?? join(ROOT, '..', 'MiniVIC Games');
-    if (!existsSync(join(src, 'bin'))) throw new Error(`cartella dei giochi non trovata: ${src} (usa --source o --github)`);
+    if (!existsSync(join(src, 'bin'))) throw new Error(`games folder not found: ${src} (use --source or --github)`);
     for (const f of readdirSync(join(src, 'bin')).filter(f => f.endsWith('.bin'))) {
       bins.set(f.replace(/\.bin$/, ''), new Uint8Array(readFileSync(join(src, 'bin', f))));
     }
@@ -78,7 +78,7 @@ async function readSource() {
   }));
 }
 
-/** giochi attuali dell'emulatore (da games.ts) */
+/** current emulator games (from games.ts) */
 function readCurrent() {
   const text = existsSync(GAMES_TS) ? readFileSync(GAMES_TS, 'utf8') : '';
   const list = [];
@@ -94,9 +94,9 @@ function readCurrent() {
 
 function renderGamesTs(games) {
   const esc = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  return `// Giochi miniVIC inclusi (public/games, da github.com/${REPO})
-// Ogni .bin parte da $0FD0 (trampolino NMI) e il programma da $1000.
-// Elenco generato da scripts/sync-games.mjs: si aggiorna con la skill sync-minivic-games.
+  return `// Bundled miniVIC games (public/games, from github.com/${REPO})
+// Every .bin starts at $0FD0 (NMI trampoline) and the program at $1000.
+// List generated by scripts/sync-games.mjs: it is updated by the sync-minivic-games skill.
 
 export interface GameInfo {
   file: string;
@@ -126,7 +126,7 @@ async function main() {
   const missing = current.filter(g => !src.has(g.name));
   const removed = flag('--prune') ? missing : [];
 
-  // ordine finale: quello della sorgente; i giochi tolti dalla sorgente restano in fondo (se non --prune)
+  // final order: the source order; games removed from the source stay at the end (unless --prune)
   const final = [...source, ...missing.filter(g => !removed.includes(g))];
   const changed = added.length + updated.length + renamed.length + removed.length > 0 ||
     final.map(g => g.name).join() !== current.map(g => g.name).join();
@@ -135,7 +135,7 @@ async function main() {
     changed,
     added: added.map(g => `${g.name} (${g.title})`),
     updated: updated.map(g => g.name),
-    renamed: renamed.map(g => `${g.name}: ${g.title}, ${g.players} gioc.`),
+    renamed: renamed.map(g => `${g.name}: ${g.title}, ${g.players} players`),
     removed: removed.map(g => g.name),
     onlyInEmulator: missing.filter(g => !removed.includes(g)).map(g => g.name),
     total: final.length,
@@ -155,28 +155,28 @@ async function main() {
     console.log(JSON.stringify(summary, null, 2));
   } else if (hook) {
     if (changed) {
-      console.log(`Giochi miniVIC da sincronizzare nell'emulatore: ` +
-        [summary.added.length && `nuovi ${summary.added.join(', ')}`,
-         summary.updated.length && `aggiornati ${summary.updated.join(', ')}`,
-         summary.renamed.length && `dati cambiati ${summary.renamed.join('; ')}`]
+      console.log(`miniVIC games to sync into the emulator: ` +
+        [summary.added.length && `new ${summary.added.join(', ')}`,
+         summary.updated.length && `updated ${summary.updated.join(', ')}`,
+         summary.renamed.length && `changed details ${summary.renamed.join('; ')}`]
           .filter(Boolean).join(' - ').replace(/\.$/, '') +
-        `. Usa la skill sync-minivic-games per aggiornarli.`);
+        `. Use the sync-minivic-games skill to update them.`);
     }
   } else {
     const line = (label, list) => list.length && console.log(`${label}: ${list.join(', ')}`);
-    if (!changed) console.log(`Giochi gia' allineati (${summary.total}).`);
-    else console.log(check ? 'Ci sono differenze:' : `Giochi sincronizzati (${summary.total}):`);
-    line('  nuovi', summary.added);
-    line('  aggiornati', summary.updated);
-    line('  titolo/giocatori cambiati', summary.renamed);
-    line('  tolti', summary.removed);
-    line('  solo nell\'emulatore (non tolti, usa --prune)', summary.onlyInEmulator);
+    if (!changed) console.log(`Games already in sync (${summary.total}).`);
+    else console.log(check ? 'There are differences:' : `Games synced (${summary.total}):`);
+    line('  new', summary.added);
+    line('  updated', summary.updated);
+    line('  title/players changed', summary.renamed);
+    line('  removed', summary.removed);
+    line('  only in the emulator (not removed, use --prune)', summary.onlyInEmulator);
   }
   process.exit(check && changed && !hook ? 2 : 0);
 }
 
 main().catch(e => {
-  if (hook) process.exit(0); // l'hook non deve mai bloccare l'avvio della sessione
+  if (hook) process.exit(0); // the hook must never block the session start
   console.error(`sync-games: ${e.message}`);
   process.exit(1);
 });

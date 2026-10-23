@@ -1,18 +1,18 @@
-// StereoSink - raccoglie i campioni dei PSG e li ricampiona alla frequenza dell'uscita audio
+// StereoSink - collects the PSG samples and resamples them to the audio output rate
 //
-// I PSG producono un campione per tick (clock/8, 125 kHz a 1 MHz). Qui si fa la media dei
-// tick che cadono in ogni campione di uscita (filtro a finestra, abbastanza per togliere
-// l'aliasing delle onde quadre) e si applica un passa-alto a ~20 Hz, come i condensatori
-// di uscita degli LM386 della scheda audio.
+// The PSGs produce one sample per tick (clock/8, 125 kHz at 1 MHz). Here the ticks falling
+// in each output sample are averaged (box filter, enough to remove the aliasing of the
+// square waves) and a ~20 Hz high-pass is applied, like the output capacitors of the
+// audio board LM386s.
 
 export class StereoSink {
-  /** frequenza dei campioni in ingresso (tick dei PSG) */
+  /** input sample rate (PSG ticks) */
   inputRate = 125000;
-  /** frequenza dell'uscita audio */
+  /** audio output sample rate */
   outputRate = 48000;
-  /** volume generale 0..1 */
+  /** master volume 0..1 */
   volume = 0.8;
-  /** true = mescola sinistro e destro (uscita mono) */
+  /** true = mix left and right (mono output) */
   mono = false;
 
   private accL = 0;
@@ -26,7 +26,7 @@ export class StereoSink {
   private buf = new Float32Array(8192);
   private len = 0;
 
-  /** livello di picco dall'ultimo take() (per i VU meter) */
+  /** peak level since the last take() (for the VU meters) */
   peakL = 0;
   peakR = 0;
 
@@ -41,7 +41,7 @@ export class StereoSink {
     let R = this.accR / this.accN;
     this.accL = this.accR = this.accN = 0;
     if (this.mono) L = R = (L + R) / 2;
-    // passa-alto a un polo (~20 Hz)
+    // one-pole high-pass (~20 Hz)
     const a = 1 / (1 + (2 * Math.PI * 20) / this.outputRate);
     this.hpL = a * (this.hpL + L - this.lastInL);
     this.hpR = a * (this.hpR + R - this.lastInR);
@@ -60,7 +60,7 @@ export class StereoSink {
     this.buf[this.len++] = oR;
   }
 
-  /** campioni stereo interlacciati prodotti dall'ultima chiamata */
+  /** interleaved stereo samples produced since the last call */
   take(): Float32Array {
     const out = this.buf.slice(0, this.len);
     this.len = 0;

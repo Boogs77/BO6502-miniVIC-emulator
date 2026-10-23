@@ -1,8 +1,8 @@
-; leds.asm - test della scheda LED (esempio del README): VIA a $D000, porte in uscita
+; leds.asm - LED board test (README example): VIA at $D000, ports as outputs
  .org $1000
   LDA #$FF
-  STA $D002             ; DDRB in uscita
-  STA $D003             ; DDRA in uscita
+  STA $D002             ; DDRB as output
+  STA $D003             ; DDRA as output
   LDA #$A5
   STA $D001             ; PA = 10100101
   LDA #$3C

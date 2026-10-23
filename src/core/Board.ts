@@ -1,4 +1,4 @@
-// Interfaccia comune delle schede sul bus a 39 pin
+// Common interface of the boards on the 39-pin bus
 
 import { StereoSink } from '../audio/StereoSink';
 
@@ -6,38 +6,38 @@ export type BoardType = 'vdu' | 'serial' | 'keyboard' | 'joystick' | 'sdcard' | 
 
 export type IrqLine = 'irq' | 'nmi' | 'none';
 
-/** cio' che la macchina mette a disposizione delle schede */
+/** what the machine provides to the boards */
 export interface BoardContext {
-  /** ciclo CPU corrente */
+  /** current CPU cycle */
   cycles(): number;
-  /** clock della CPU in Hz */
+  /** CPU clock in Hz */
   readonly cpuHz: number;
-  /** imposta la linea di interrupt della scheda */
+  /** sets the board interrupt line */
   setInterrupt(board: Board, active: boolean): void;
   readonly audio: StereoSink;
 }
 
 export interface Board {
   readonly type: BoardType;
-  /** nome della scheda e dei chip */
+  /** board and chip name */
   readonly label: string;
-  /** primo indirizzo decodificato */
+  /** first decoded address */
   base: number;
-  /** ampiezza dello spazio decodificato (multiplo di 16) */
+  /** size of the decoded space (multiple of 16) */
   readonly size: number;
-  /** linea di interrupt della scheda ('none' se non ne ha) */
+  /** board interrupt line ('none' if it has none) */
   irqLine: IrqLine;
 
   attach(ctx: BoardContext): void;
   reset(): void;
   read(offset: number): number;
   write(offset: number, value: number): void;
-  /** lettura senza effetti collaterali (debugger) */
+  /** read without side effects (debugger) */
   peek(offset: number): number;
-  /** avanza di n cicli CPU (opzionale) */
+  /** advances by n CPU cycles (optional) */
   tick?(cycles: number): void;
-  /** accensione: contenuto casuale delle memorie, come i chip reali (opzionale) */
+  /** power-on: random memory content, like the real chips (optional) */
   powerOn?(): void;
-  /** fine del frame video (opzionale) */
+  /** end of the video frame (optional) */
   endFrame?(): void;
 }

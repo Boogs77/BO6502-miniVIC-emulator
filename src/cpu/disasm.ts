@@ -1,4 +1,4 @@
-// Disassemblatore W65C02 (per il debugger)
+// W65C02 disassembler (for the debugger)
 
 type Mode = 'imp' | 'acc' | 'imm' | 'zp' | 'zpx' | 'zpy' | 'abs' | 'abx' | 'aby' | 'izx' | 'izy' | 'izp'
   | 'ind' | 'iax' | 'rel' | 'zpr';
@@ -8,7 +8,7 @@ const LEN: Record<Mode, number> = {
   izx: 2, izy: 2, izp: 2, ind: 3, iax: 3, rel: 2, zpr: 3,
 };
 
-// "opcode mnemonico modo"
+// "opcode mnemonic mode"
 const TABLE = `
 00 BRK imp|01 ORA izx|04 TSB zp|05 ORA zp|06 ASL zp|08 PHP imp|09 ORA imm|0A ASL acc|0C TSB abs|0D ORA abs|0E ASL abs
 10 BPL rel|11 ORA izy|12 ORA izp|14 TRB zp|15 ORA zpx|16 ASL zpx|18 CLC imp|19 ORA aby|1A INC acc|1C TRB abs|1D ORA abx|1E ASL abx

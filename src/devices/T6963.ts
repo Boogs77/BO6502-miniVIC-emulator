@@ -1,15 +1,15 @@
-// Toshiba T6963C (RA6963) - controller LCD grafico, display DS-G160128STBWW 160x128
+// Toshiba T6963C (RA6963) - graphic LCD controller, DS-G160128STBWW 160x128 display
 //
-//   interfaccia 8080: /CE, /WR, /RD, C/D; il byte si legge sul fronte di salita di /WR
-//   C/D = 1 comando (scrittura) / stato (lettura); C/D = 0 dati
-//   i dati prima di un comando sono i suoi parametri (max 2: D1, D2)
-//   comandi: $21 cursore, $22 offset CG RAM, $24 puntatore indirizzi, $40-$43 home/area di
-//            testo e grafica, $80-$8F modo (OR/EXOR/AND, CG ROM/RAM), $90-$9F display,
-//            $A0-$A7 forma del cursore, $B0/$B1/$B2 auto write/read/fine, $C0-$C5 lettura e
-//            scrittura con incremento/decremento, $F0-$FF bit reset/set
-//   carattere: font 8x8 (FS = 0, 20 colonne su 160 pixel); codici $00-$7F = CG ROM (ASCII - $20),
-//              $80-$FF (o tutti, con la CG RAM esterna) = CG RAM a offset * $800 + codice * 8
-// Stato: STA0/STA1 sempre pronti (nessuna attesa), STA2/STA3 nei modi automatici.
+//   8080 interface: /CE, /WR, /RD, C/D; the byte is latched on the rising edge of /WR
+//   C/D = 1 command (write) / status (read); C/D = 0 data
+//   the data bytes before a command are its parameters (max 2: D1, D2)
+//   commands: $21 cursor, $22 CG RAM offset, $24 address pointer, $40-$43 text and graphic
+//             home/area, $80-$8F mode (OR/EXOR/AND, CG ROM/RAM), $90-$9F display,
+//             $A0-$A7 cursor shape, $B0/$B1/$B2 auto write/read/end, $C0-$C5 read and
+//             write with increment/decrement, $F0-$FF bit reset/set
+//   characters: 8x8 font (FS = 0, 20 columns over 160 pixels); codes $00-$7F = CG ROM (ASCII - $20),
+//               $80-$FF (or all of them, with the external CG RAM) = CG RAM at offset * $800 + code * 8
+// Status: STA0/STA1 always ready (no waiting), STA2/STA3 in the auto modes.
 
 import { glyph } from './font5x8';
 
@@ -22,9 +22,9 @@ export class T6963 {
   textArea = 20;
   graphicHome = 0;
   graphicArea = 20;
-  /** modo: 0 OR, 1 EXOR, 3 AND, 4 attributi testo; bit 3 = solo CG RAM */
+  /** mode: 0 OR, 1 EXOR, 3 AND, 4 text attributes; bit 3 = CG RAM only */
   mode = 0;
-  /** bit0 lampeggio, bit1 cursore, bit2 testo, bit3 grafica */
+  /** bit0 blink, bit1 cursor, bit2 text, bit3 graphics */
   display = 0;
   cursorX = 0;
   cursorY = 0;
@@ -111,13 +111,13 @@ export class T6963 {
     }
   }
 
-  /** riga di pixel dal generatore di caratteri */
+  /** pixel row from the character generator */
   private charRow(code: number, line: number): number {
-    if (code < 0x80 && !(this.mode & 0x08)) return glyph(code + 0x20)[line] >> 1; // 5x8 centrato in 8
+    if (code < 0x80 && !(this.mode & 0x08)) return glyph(code + 0x20)[line] >> 1; // 5x8 centred in 8
     return this.ram[((this.offset << 11) + code * 8 + line) & 0xFFFF];
   }
 
-  /** disegna il display in out (1 = pixel acceso) */
+  /** draws the display into out (1 = pixel on) */
   render(out: Uint8Array, blinkPhase: boolean): void {
     out.fill(0);
     const textOn = (this.display & 0x04) !== 0;
@@ -135,7 +135,7 @@ export class T6963 {
         else if (op === 1) v = t ^ g;
         else if (op === 3) v = t & g;
         else v = t | g;
-        // cursore: le ultime cursorLines righe della cella
+        // cursor: the last cursorLines lines of the cell
         if ((this.display & 0x02) && col === this.cursorX && row === this.cursorY &&
             line >= 8 - this.cursorLines && (!(this.display & 0x01) || blinkPhase)) v = 0xFF;
         const o = y * T6963_W + col * 8;

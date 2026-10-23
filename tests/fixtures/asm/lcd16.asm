@@ -1,5 +1,5 @@
-; lcd16.asm - test della scheda LCD legacy (HD44780 a 4 bit, routine di lcd.s del BIOS)
-; VIA a $D000: PB0-3 = DB4-7, PB4 RS, PB5 RW, PB6 E. Scrive due righe, legge il busy flag.
+; lcd16.asm - legacy LCD board test (4-bit HD44780, BIOS lcd.s routines)
+; VIA at $D000: PB0-3 = DB4-7, PB4 RS, PB5 RW, PB6 E. Writes two lines, reads the busy flag.
 PORTB = $D000
 DDRB  = $D002
 E     = %01000000
@@ -10,17 +10,17 @@ RS    = %00010000
 START:
   LDA #$FF
   STA DDRB
-  LDA #%00000010        ; 4 bit (con l'interfaccia ancora a 8 bit)
+  LDA #%00000010        ; 4 bit (with the interface still in 8-bit mode)
   STA PORTB
   ORA #E
   STA PORTB
   AND #%00001111
   STA PORTB
-  LDA #%00101000        ; 4 bit, 2 righe, 5x8
+  LDA #%00101000        ; 4 bit, 2 lines, 5x8
   JSR LCD_INSTR
-  LDA #%00001110        ; display on, cursore on
+  LDA #%00001110        ; display on, cursor on
   JSR LCD_INSTR
-  LDA #%00000110        ; incremento, niente scorrimento
+  LDA #%00000110        ; increment, no shift
   JSR LCD_INSTR
   LDA #%00000001        ; clear
   JSR LCD_INSTR
@@ -32,7 +32,7 @@ START:
   INX
   BNE .l1
 .r2:
-  LDA #$C0              ; DDRAM $40: seconda riga
+  LDA #$C0              ; DDRAM $40: second line
   JSR LCD_INSTR
   LDX #0
 .l2:
@@ -46,20 +46,20 @@ START:
 
 LCD_WAIT:
   PHA
-  LDA #%11110000        ; dati in ingresso
+  LDA #%11110000        ; data as input
   STA DDRB
 .busy:
   LDA #RW
   STA PORTB
   LDA #(RW | E)
   STA PORTB
-  LDA PORTB             ; nibble alto con il busy flag
+  LDA PORTB             ; high nibble with the busy flag
   PHA
   LDA #RW
   STA PORTB
   LDA #(RW | E)
   STA PORTB
-  LDA PORTB             ; nibble basso
+  LDA PORTB             ; low nibble
   PLA
   AND #%00001000
   BNE .busy

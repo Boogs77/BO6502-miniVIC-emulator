@@ -1,4 +1,4 @@
-// Funzioni comuni dei test: PNG del frame, testo dello schermo, tasti
+// Shared test helpers: frame PNGs, screen text, keys
 import { deflateSync, crc32 } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,7 +13,7 @@ export function savePng(m: Machine, name: string): string {
   return writePng(name, SCREEN_W, SCREEN_H, (x, y) => TMS_PALETTE[vdp.frame[y * SCREEN_W + x]]);
 }
 
-/** PNG generico: pixel(x, y) -> [r, g, b] */
+/** generic PNG: pixel(x, y) -> [r, g, b] */
 export function writePng(name: string, w: number, h: number, pixel: (x: number, y: number) => readonly number[]): string {
   const raw = Buffer.alloc((w * 3 + 1) * h);
   let o = 0;
@@ -41,7 +41,7 @@ export function writePng(name: string, w: number, h: number, pixel: (x: number, 
   return file;
 }
 
-/** testo della name table in modo Text (40x24) */
+/** name table text in Text mode (40x24) */
 export function screenText(m: Machine): string {
   const vdp = m.vdu!.vdp;
   const nt = (vdp.reg[2] & 0x0F) << 10;
@@ -61,7 +61,7 @@ export function runFrames(m: Machine, n: number): void {
   for (let i = 0; i < n; i++) m.runFrame();
 }
 
-/** premi e rilascia un tasto PS/2 */
+/** presses and releases a PS/2 key */
 export function tap(m: Machine, code: string, frames = 4): void {
   const kb = m.board<KeyboardBoard>('keyboard')!.keyboard;
   kb.keyDown(code);

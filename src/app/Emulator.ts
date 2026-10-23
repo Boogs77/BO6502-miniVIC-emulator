@@ -1,8 +1,8 @@
-// Emulator - controller: macchina corrente, impostazioni, ciclo di esecuzione, input
+// Emulator - controller: current machine, settings, run loop, input
 //
-// Il ciclo gira su requestAnimationFrame. Con l'audio attivo il ritmo lo da' la coda
-// del worklet (si eseguono frame finche' ci sono ~70 ms di audio in coda), cosi' suono e
-// video restano agganciati senza scatti; senza audio si segue l'orologio del browser.
+// The loop runs on requestAnimationFrame. With audio on, the pace is set by the worklet
+// queue (frames are run while there is less than ~70 ms of audio queued), so sound and
+// video stay locked without stutter; without audio the browser clock is followed.
 
 import { Machine, NTSC_FPS } from '../core/Machine';
 import { MachineConfig, MachineId, buildMachine, defaultConfig } from '../machines/profiles';
@@ -18,7 +18,7 @@ import { BoardType } from '../core/Board';
 
 export type KeyMode = 'ps2' | 'joy';
 
-/** tasti fisici -> joystick: P1 frecce + Z/X, P2 WASD + F/G */
+/** physical keys -> joystick: P1 arrows + Z/X, P2 WASD + F/G */
 const JOY_KEYS: Record<string, [number, number]> = {
   ArrowUp: [0, JOY_UP], ArrowDown: [0, JOY_DOWN], ArrowLeft: [0, JOY_LEFT], ArrowRight: [0, JOY_RIGHT],
   KeyZ: [0, JOY_FIRE1], KeyX: [0, JOY_FIRE2], Space: [0, JOY_FIRE1], ControlLeft: [0, JOY_FIRE1],
@@ -34,23 +34,23 @@ export class Emulator {
 
   powered = false;
   paused = false;
-  /** velocita' (1 = tempo reale) */
+  /** speed (1 = real time) */
   speed = 1;
   romData: Uint8Array | null = null;
   romName = '';
   sdImage: Uint8Array | null = null;
   sdName = '';
 
-  /** chiamata a ogni frame emulato e mostrato */
+  /** called on every emulated and displayed frame */
   onFrame: () => void = () => {};
-  /** cambio di stato (accensione, pausa, macchina...) */
+  /** state change (power, pause, machine...) */
   onState: () => void = () => {};
-  /** byte trasmesso dalla seriale */
+  /** byte transmitted by the serial port */
   onSerial: (byte: number) => void = () => {};
-  /** messaggio per l'utente */
+  /** message for the user */
   onMessage: (text: string, kind?: 'info' | 'error') => void = () => {};
 
-  // sorgenti dei joystick: virtuali (mouse), tastiera fisica, gamepad
+  // joystick sources: virtual (mouse), physical keyboard, gamepad
   readonly joyVirtual = [0, 0];
   private joyKeys = [0, 0];
   private joyPad = [0, 0];
@@ -68,38 +68,49 @@ export class Emulator {
     this.machine = buildMachine(this.config);
   }
 
-  // ---------------- macchina e configurazione ----------------
+  // ---------------- machine and configuration ----------------
   get machineId(): MachineId {
     return this.config.id;
   }
 
-  /** carica ROM e SD predefinite (all'avvio) */
+  /** loads the default ROM and SD card (at startup) */
   async init(): Promise<void> {
     await this.loadDefaultRom();
-    await this.loadGamesSd().catch(() => this.onMessage('Giochi predefiniti non trovati', 'error'));
+    await this.loadGamesSd().catch(() => this.onMessage('Default games not found', 'error'));
     this.rebuild();
   }
 
   async loadDefaultRom(): Promise<void> {
     const r = await fetch('./roms/minivic.bin');
-    if (!r.ok) throw new Error('ROM predefinita non trovata');
+    if (!r.ok) throw new Error('Default ROM not found');
     this.romData = new Uint8Array(await r.arrayBuffer());
     this.romName = 'BIOS miniVIC 30.09.26 (WozMon + MS BASIC + SD)';
   }
 
   async loadGamesSd(): Promise<void> {
+    // public/sd.img (copied by bo6502-SDbuilder/aggiorna_sd.py) wins: it is the same SD as the real card.
+    // The "BOGS" check also covers the Vite dev server, which answers index.html for missing files.
+    const img = await fetch('./sd.img').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+    if (img && img.byteLength >= 512 && img.byteLength % 512 === 0) {
+      const data = new Uint8Array(img);
+      if (String.fromCharCode(...data.subarray(0, 4)) === 'BOGS') {
+        this.sdImage = data;
+        this.sdName = `BO6502-SDbuilder SD (${data[15]} programs)`;
+        return;
+      }
+    }
     const programs: SdProgram[] = [];
     for (const g of GAMES) {
       const r = await fetch(`./games/${g.file}`);
       if (!r.ok) continue;
       programs.push({ name: g.title, data: new Uint8Array(await r.arrayBuffer()), load: GAME_LOAD, entry: GAME_ENTRY, run: true });
     }
-    if (!programs.length) throw new Error('nessun gioco');
+    if (!programs.length) throw new Error('no games');
     this.sdImage = buildSdImage(programs);
-    this.sdName = `Giochi miniVIC (${programs.length} programmi)`;
+    this.sdName = `miniVIC games (${programs.length} programs)`;
   }
 
-  /** ricrea la macchina dalla configurazione (solo a macchina spenta) */
+  /** rebuilds the machine from the configuration (only with the machine off) */
   rebuild(): void {
     this.machine = buildMachine(this.config);
     if (this.romData) this.machine.loadRom(this.romData);
@@ -122,7 +133,7 @@ export class Emulator {
     if (wasOn) this.powerOn();
   }
 
-  /** modifica la configurazione (rack) e ricostruisce la macchina */
+  /** changes the configuration (rack) and rebuilds the machine */
   updateConfig(change: (c: MachineConfig) => void): void {
     if (this.powered) return;
     change(this.config);
@@ -141,12 +152,12 @@ export class Emulator {
     saveSettings(this.settings);
   }
 
-  // ---------------- alimentazione ----------------
+  // ---------------- power ----------------
   powerOn(): void {
     if (this.powered) return;
     void this.audio.start()
       .then(() => { this.machine.audio.outputRate = this.audio.sampleRate; })
-      .catch(() => this.onMessage('Audio non disponibile nel browser', 'error'));
+      .catch(() => this.onMessage('Audio not available in this browser', 'error'));
     this.machine.randomRam = this.settings.randomRam;
     this.machine.powerOn();
     this.powered = true;
@@ -181,7 +192,7 @@ export class Emulator {
     this.onState();
   }
 
-  // ---------------- ciclo ----------------
+  // ---------------- loop ----------------
   private startLoop(): void {
     cancelAnimationFrame(this.raf);
     this.lastTime = performance.now();
@@ -202,7 +213,7 @@ export class Emulator {
     let frames: number;
     const frameTime = 1 / (NTSC_FPS * this.speed);
     if (this.audio.running && this.speed === 1 && this.settings.volume > 0) {
-      // agganciato all'audio: riempi la coda fino a ~70 ms
+      // locked to audio: fill the queue up to ~70 ms
       const target = 0.07;
       const missing = target - this.audio.buffered;
       frames = Math.max(0, Math.min(4, Math.ceil(missing * NTSC_FPS)));
@@ -216,7 +227,7 @@ export class Emulator {
     for (let i = 0; i < frames; i++) {
       if (!this.machine.runFrame()) {
         this.paused = true;
-        this.onMessage(`Breakpoint a $${this.machine.cpu.pc.toString(16).toUpperCase().padStart(4, '0')}`);
+        this.onMessage(`Breakpoint at $${this.machine.cpu.pc.toString(16).toUpperCase().padStart(4, '0')}`);
         this.onState();
         break;
       }
@@ -232,7 +243,7 @@ export class Emulator {
     if (frames > 0 || this.paused) this.onFrame();
   }
 
-  /** debugger: una istruzione */
+  /** debugger: one instruction */
   step(): void {
     if (!this.powered) return;
     this.paused = true;
@@ -242,11 +253,11 @@ export class Emulator {
     this.onFrame();
   }
 
-  /** debugger: un frame */
+  /** debugger: one frame */
   stepFrame(): void {
     if (!this.powered) return;
     this.paused = true;
-    // se siamo fermi su un breakpoint, prima superalo
+    // if stopped on a breakpoint, step past it first
     const bp = this.machine.breakpoint;
     this.machine.breakpoint = null;
     this.machine.stepInstruction();
@@ -281,7 +292,7 @@ export class Emulator {
     return this.machine.board<AudioBoard>('audio');
   }
 
-  // ---------------- tastiera e joystick ----------------
+  // ---------------- keyboard and joysticks ----------------
   get keyboard(): KeyboardBoard | undefined {
     return this.machine.board<KeyboardBoard>('keyboard');
   }
@@ -290,7 +301,7 @@ export class Emulator {
     return this.machine.board<JoystickBoard>('joystick');
   }
 
-  /** tasto fisico premuto: true se l'emulatore lo ha usato */
+  /** physical key event: true if the emulator used it */
   physicalKey(code: string, down: boolean, repeat: boolean): boolean {
     if (!this.powered) return false;
     if (this.settings.keyMode === 'joy') {
@@ -324,7 +335,7 @@ export class Emulator {
     this.updateJoysticks();
   }
 
-  /** stato combinato di un joystick (per l'interfaccia) */
+  /** combined state of a joystick (for the UI) */
   joystickState(player: number): number {
     return this.joyVirtual[player] | this.joyKeys[player] | this.joyPad[player];
   }
@@ -358,12 +369,12 @@ export class Emulator {
     }
   }
 
-  // ---------------- seriale ----------------
+  // ---------------- serial ----------------
   serialInput(byte: number): void {
     this.machine.board<SerialBoard>('serial')?.acia.receive(byte);
   }
 
-  // ---------------- caricamenti ----------------
+  // ---------------- loading ----------------
   setRom(data: Uint8Array, name: string): void {
     this.romData = data;
     this.romName = name;
@@ -379,13 +390,13 @@ export class Emulator {
   }
 
   /**
-   * carica un programma in RAM; con entry >= 0 lo avvia (stack azzerato, interrupt mascherati
-   * come dopo il BIOS). Se la macchina e' spenta la accende e lascia partire il BIOS.
+   * loads a program into RAM; with entry >= 0 it starts it (stack reset, interrupts masked
+   * as after the BIOS). If the machine is off it powers it on and lets the BIOS start.
    */
   loadProgram(data: Uint8Array, load: number, entry: number): void {
     if (!this.powered) {
       this.powerOn();
-      // il BIOS inizializza le schede: si aspetta il suo ciclo d'attesa del tasto (max 3 s)
+      // the BIOS initialises the boards: wait for its key-wait loop (max 3 s)
       for (let i = 0; i < 180 && !(i > 20 && this.biosIdle()); i++) this.machine.runFrame();
       this.machine.audio.take();
     }
@@ -401,7 +412,7 @@ export class Emulator {
     this.onState();
   }
 
-  /** il BIOS e' nel menu, in attesa di un tasto (CHRIN a $A94E-$A973 o ciclo $E015-$E018) */
+  /** the BIOS is in its menu, waiting for a key (CHRIN at $A94E-$A973 or loop $E015-$E018) */
   private biosIdle(): boolean {
     const pc = this.machine.cpu.pc;
     return (pc >= 0xE015 && pc <= 0xE018) || (pc >= 0xA94E && pc <= 0xA973);
@@ -409,20 +420,20 @@ export class Emulator {
 
   async runGame(file: string): Promise<void> {
     const r = await fetch(`./games/${file}`);
-    if (!r.ok) throw new Error(`${file} non trovato`);
-    if (this.machineId !== 'minivic') this.onMessage('I giochi sono scritti per il miniVIC (VDP su NMI, audio $D38x, joystick $D58x)');
+    if (!r.ok) throw new Error(`${file} not found`);
+    if (this.machineId !== 'minivic') this.onMessage('The games are written for the miniVIC (VDP on NMI, audio $D38x, joystick $D58x)');
     this.setKeyMode('joy');
     this.loadProgram(new Uint8Array(await r.arrayBuffer()), GAME_LOAD, GAME_ENTRY);
   }
 
-  /** demo di una scheda del BO6502: inserisce la scheda nel rack (se serve) e avvia il programma a $1000 */
+  /** demo of a BO6502 board: plugs the board into the rack (if needed) and starts the program at $1000 */
   async runDemo(file: string, board: BoardType): Promise<void> {
     const r = await fetch(`./demos/${file}`);
-    if (!r.ok) throw new Error(`${file} non trovato`);
+    if (!r.ok) throw new Error(`${file} not found`);
     const data = new Uint8Array(await r.arrayBuffer());
     if (this.machineId !== 'bo6502') this.selectMachine('bo6502');
     const cfg = this.config.boards.find(b => b.type === board);
-    // LCD legacy e LED decodificano entrambe tutta la pagina $Dxxx: ne resta inserita una sola
+    // legacy LCD and LEDs both decode the whole $Dxxx page: only one stays plugged in
     const rival = this.config.boards.find(b => b.enabled && b.type !== board &&
       (b.type === 'lcd' || b.type === 'leds') && (board === 'lcd' || board === 'leds') && b.base === cfg?.base);
     if ((cfg && !cfg.enabled) || rival) {
@@ -433,7 +444,7 @@ export class Emulator {
           if (rival && b.type === rival.type) b.enabled = false;
         }
       });
-      this.onMessage(rival ? `Scheda ${board} inserita al posto di ${rival.type}` : `Scheda ${board} inserita nel rack`);
+      this.onMessage(rival ? `Board ${board} plugged in instead of ${rival.type}` : `Board ${board} plugged into the rack`);
     }
     this.setKeyMode('ps2');
     this.loadProgram(data, 0x1000, 0x1000);

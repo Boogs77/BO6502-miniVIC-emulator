@@ -1,7 +1,7 @@
-// run.mjs - compila i test TypeScript con esbuild e li esegue con Node
+// run.mjs - builds the TypeScript tests with esbuild and runs them with Node
 //
-//   npm test              tutti i file tests/*.test.ts
-//   npm test -- cpu       solo quelli che contengono "cpu" nel nome
+//   npm test              all the tests/*.test.ts files
+//   npm test -- cpu       only those with "cpu" in their name
 import { build } from 'esbuild';
 import { readdirSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';

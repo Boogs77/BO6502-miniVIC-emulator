@@ -1,4 +1,4 @@
-// Audio: volume, stereo/mono, VU meter L/R e stato dei due AY-3-8910 con mute per canale
+// Audio: volume, stereo/mono, L/R VU meters and state of the two AY-3-8910s with per-channel mute
 
 import { Emulator } from '../../app/Emulator';
 import { AY38910 } from '../../devices/AY38910';
@@ -13,7 +13,7 @@ function noteName(freq: number): string {
   return NOTE_NAMES[((n % 12) + 12) % 12] + Math.floor(n / 12);
 }
 
-/** vista di un chip: elementi creati una volta, aggiornati a ogni refresh */
+/** view of one chip: elements built once, updated on every refresh */
 class ChipView {
   readonly el: HTMLElement;
   private title = h('span', { class: 'dim' });
@@ -49,7 +49,7 @@ class ChipView {
   }
 
   setPort(port: number): void {
-    this.title.textContent = `latch $${hex(port, 4)} · dato $${hex(port + 1, 4)}`;
+    this.title.textContent = `latch $${hex(port, 4)} · data $${hex(port + 1, 4)}`;
   }
 
   update(hz: number): void {
@@ -66,12 +66,12 @@ class ChipView {
       const audible = (tone || noise) && (env || vol > 0);
       this.levels[ch].style.width = `${audible ? (env ? 100 : (vol / 15) * 100) : 0}%`;
       this.levels[ch].classList.toggle('env', env);
-      this.infos[ch].textContent = (tone ? `${freq.toFixed(1)} Hz ${noteName(freq)}` : 'tono off') +
-        (noise ? ' + rumore' : '') + (env ? ' · inviluppo' : ` · vol ${vol}`);
+      this.infos[ch].textContent = (tone ? `${freq.toFixed(1)} Hz ${noteName(freq)}` : 'tone off') +
+        (noise ? ' + noise' : '') + (env ? ' · envelope' : ` · vol ${vol}`);
       this.buttons[ch].classList.toggle('muted', ay.muted[ch]);
-      this.buttons[ch].title = ay.muted[ch] ? 'Riattiva il canale' : 'Silenzia il canale';
+      this.buttons[ch].title = ay.muted[ch] ? 'Unmute channel' : 'Mute channel';
     }
-    this.extra.textContent = `rumore ${r[6]} · inviluppo ${r[11] | (r[12] << 8)} forma ${r[13]} · registro selezionato R${ay.selected}`;
+    this.extra.textContent = `noise ${r[6]} · envelope ${r[11] | (r[12] << 8)} shape ${r[13]} · selected register R${ay.selected}`;
     for (let i = 0; i < 16; i++) this.regs[i].textContent = hex(r[i], 2);
   }
 }
@@ -81,7 +81,7 @@ export class AudioPanel {
   private meterL = h('div', { class: 'vu-bar' });
   private meterR = h('div', { class: 'vu-bar' });
   private chips: HTMLElement;
-  private none = h('p', { class: 'hint' }, 'Nessuna scheda audio inserita.');
+  private none = h('p', { class: 'hint' }, 'No audio board plugged in.');
   private left: ChipView;
   private right: ChipView;
   private readonly emu: Emulator;
@@ -96,8 +96,8 @@ export class AudioPanel {
     const mono = h('input', { type: 'checkbox', checked: s.mono });
     mono.addEventListener('change', () => { s.mono = mono.checked; emu.applyAudioSettings(); emu.save(); });
 
-    this.left = new ChipView('Sinistro (L)', () => emu.audioBoard?.left);
-    this.right = new ChipView('Destro (R)', () => emu.audioBoard?.right);
+    this.left = new ChipView('Left (L)', () => emu.audioBoard?.left);
+    this.right = new ChipView('Right (R)', () => emu.audioBoard?.right);
     this.chips = h('div', { class: 'ay-chips' }, this.left.el, this.right.el);
 
     this.el = h('div', { class: 'panel-body' },
@@ -105,7 +105,7 @@ export class AudioPanel {
       h('div', { class: 'vu' },
         h('div', { class: 'vu-ch' }, h('span', {}, 'L'), h('div', { class: 'vu-track' }, this.meterL)),
         h('div', { class: 'vu-ch' }, h('span', {}, 'R'), h('div', { class: 'vu-track' }, this.meterR))),
-      h('p', { class: 'hint' }, 'Scheda stereo: un AY-3-8910 per canale, amplificati da due LM386. Clic su un canale per silenziarlo.'),
+      h('p', { class: 'hint' }, 'Stereo board: one AY-3-8910 per channel, amplified by two LM386s. Click a channel to mute it.'),
       this.none,
       this.chips,
     );

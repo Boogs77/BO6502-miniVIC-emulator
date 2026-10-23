@@ -1,4 +1,4 @@
-// App - layout e collegamenti dell'interfaccia
+// App - user interface layout and wiring
 
 import { Emulator } from '../app/Emulator';
 import { MACHINE_NAMES, MachineId } from '../machines/profiles';
@@ -17,7 +17,7 @@ import { DebugPanel } from './panels/DebugPanel';
 type TabId = 'games' | 'media' | 'rack' | 'audio' | 'terminal' | 'debug';
 
 const TABS: Array<[TabId, string]> = [
-  ['games', 'Giochi'], ['media', 'Media'], ['rack', 'Rack'], ['audio', 'Audio'], ['terminal', 'Seriale'], ['debug', 'Debug'],
+  ['games', 'Games'], ['media', 'Media'], ['rack', 'Rack'], ['audio', 'Audio'], ['terminal', 'Serial'], ['debug', 'Debug'],
 ];
 
 export class App {
@@ -38,14 +38,14 @@ export class App {
   private toastTimer = 0;
   private lastSlowUpdate = 0;
 
-  // elementi della barra
+  // top bar elements
   private powerBtn = h('button', { type: 'button', class: 'power', 'aria-pressed': 'false' }, h('span', { class: 'led' }), 'POWER');
   private resetBtn = h('button', { type: 'button' }, 'RESET');
-  private pauseBtn = h('button', { type: 'button' }, 'Pausa');
+  private pauseBtn = h('button', { type: 'button' }, 'Pause');
   private machineBtns = new Map<MachineId, HTMLElement>();
   private keyModeBtn = h('button', { type: 'button', class: 'keymode' });
   private muteBtn = h('button', { type: 'button', class: 'icon', 'aria-label': 'Audio' });
-  private speedSel = h('select', { 'aria-label': 'Velocità' },
+  private speedSel = h('select', { 'aria-label': 'Speed' },
     ...[0.25, 0.5, 1, 2, 4].map(s => h('option', { value: s, selected: s === 1 }, `${s}×`)));
   private status = h('div', { class: 'statusbar' });
   private keyboardDeck: HTMLElement;
@@ -63,9 +63,9 @@ export class App {
     this.panels.set('media', this.media.el);
     this.panels.set('rack', this.rack.el);
     this.panels.set('audio', this.audioPanel.el);
-    const serialMode = h('select', { 'aria-label': 'Impaginazione del terminale' },
-      h('option', { value: 'crt', selected: emu.settings.serialMode !== 'ansi' }, 'Come il CRT (40x24)'),
-      h('option', { value: 'ansi', selected: emu.settings.serialMode === 'ansi' }, 'Terminale ANSI 80x24'));
+    const serialMode = h('select', { 'aria-label': 'Terminal layout' },
+      h('option', { value: 'crt', selected: emu.settings.serialMode !== 'ansi' }, 'Same as the CRT (40x24)'),
+      h('option', { value: 'ansi', selected: emu.settings.serialMode === 'ansi' }, 'ANSI terminal 80x24'));
     serialMode.addEventListener('change', () => {
       emu.settings.serialMode = serialMode.value as 'crt' | 'ansi';
       emu.save();
@@ -73,14 +73,14 @@ export class App {
     });
     this.terminal.setMode(emu.settings.serialMode);
     this.panels.set('terminal', h('div', { class: 'panel-body' },
-      h('p', { class: 'hint' }, 'Porta seriale W65C51 (19200 8N1). Clicca sul terminale per scrivere: i tasti arrivano alla ricezione dell’ACIA.'),
-      h('div', { class: 'row' }, h('label', {}, 'Impaginazione ', serialMode),
-        h('button', { type: 'button', onclick: () => this.terminal.clear() }, 'Pulisci')),
+      h('p', { class: 'hint' }, 'W65C51 serial port (19200 8N1). Click the terminal to type: keys go to the ACIA receiver.'),
+      h('div', { class: 'row' }, h('label', {}, 'Layout ', serialMode),
+        h('button', { type: 'button', onclick: () => this.terminal.clear() }, 'Clear')),
       this.terminal.el));
     this.panels.set('debug', this.debug.el);
 
-    // ---------- barra superiore ----------
-    const machineSeg = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Macchina' });
+    // ---------- top bar ----------
+    const machineSeg = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Machine' });
     for (const id of ['bo6502', 'minivic'] as MachineId[]) {
       const b = h('button', { type: 'button', role: 'radio', onclick: () => emu.selectMachine(id) }, MACHINE_NAMES[id]);
       this.machineBtns.set(id, b);
@@ -103,9 +103,9 @@ export class App {
       machineSeg,
       h('div', { class: 'controls' }, this.powerBtn, this.resetBtn, this.pauseBtn, this.speedSel),
       h('div', { class: 'controls right' }, this.keyModeBtn, this.muteBtn,
-        h('button', { type: 'button', class: 'icon', 'aria-label': 'Schermo intero', title: 'Schermo intero', onclick: () => this.screen.el.requestFullscreen?.() }, '⛶')));
+        h('button', { type: 'button', class: 'icon', 'aria-label': 'Fullscreen', title: 'Fullscreen', onclick: () => this.screen.el.requestFullscreen?.() }, '⛶')));
 
-    // ---------- tastiera e joystick ----------
+    // ---------- keyboard and joysticks ----------
     const showKb = h('input', { type: 'checkbox', checked: emu.settings.showKeyboard });
     const showJoy = h('input', { type: 'checkbox', checked: emu.settings.showJoysticks });
     this.keyboardDeck = h('div', { class: 'deck-item' }, this.vkb.el);
@@ -123,14 +123,14 @@ export class App {
       h('div', { class: 'monitor' }, this.screen.el, this.status),
       this.displays.el,
       h('div', { class: 'deck-toggles' },
-        h('label', {}, showKb, ' Tastiera'),
+        h('label', {}, showKb, ' Keyboard'),
         h('label', {}, showJoy, ' Joystick'),
-        h('label', {}, smooth, ' Filtro'),
-        h('label', {}, scan, ' Scanline')),
+        h('label', {}, smooth, ' Smoothing'),
+        h('label', {}, scan, ' Scanlines')),
       this.joyDeck,
       this.keyboardDeck);
 
-    // ---------- pannelli ----------
+    // ---------- panels ----------
     const tabs = h('nav', { class: 'tabs', role: 'tablist' });
     for (const [id, label] of TABS) {
       const b = h('button', { type: 'button', role: 'tab', onclick: () => this.showTab(id) }, label);
@@ -142,7 +142,7 @@ export class App {
 
     root.replaceChildren(topbar, h('main', { class: 'layout' }, stage, side), this.toastEl);
 
-    // ---------- eventi dell'emulatore ----------
+    // ---------- emulator events ----------
     emu.onFrame = () => this.frame();
     emu.onState = () => this.refreshState();
     emu.onSerial = b => this.terminal.write(b);
@@ -193,11 +193,11 @@ export class App {
     this.powerBtn.setAttribute('aria-pressed', String(emu.powered));
     this.resetBtn.toggleAttribute('disabled', !emu.powered);
     this.pauseBtn.toggleAttribute('disabled', !emu.powered);
-    this.pauseBtn.textContent = emu.paused ? 'Continua' : 'Pausa';
+    this.pauseBtn.textContent = emu.paused ? 'Resume' : 'Pause';
     for (const [id, b] of this.machineBtns) b.setAttribute('aria-checked', String(id === emu.machineId));
     const joy = emu.settings.keyMode === 'joy';
-    this.keyModeBtn.textContent = joy ? 'Tasti → Joystick' : 'Tasti → Tastiera';
-    this.keyModeBtn.title = 'Dove vanno i tasti della tastiera fisica';
+    this.keyModeBtn.textContent = joy ? 'Keys → Joystick' : 'Keys → Keyboard';
+    this.keyModeBtn.title = 'Where the physical keyboard keys go';
     this.keyModeBtn.classList.toggle('joy', joy);
     this.muteBtn.textContent = emu.settings.muted ? '\u{1F507}' : '\u{1F50A}';
     this.keyboardDeck.hidden = !emu.settings.showKeyboard;
@@ -232,7 +232,7 @@ export class App {
     this.lastSlowUpdate = performance.now();
     const emu = this.emu;
     const m = emu.machine;
-    const state = !emu.powered ? 'spento' : emu.paused ? 'in pausa' : `${emu.fps.toFixed(0)} fps`;
+    const state = !emu.powered ? 'off' : emu.paused ? 'paused' : `${emu.fps.toFixed(0)} fps`;
     this.status.textContent =
       `${MACHINE_NAMES[emu.machineId]} · W65C02S ${m.cpuHz / 1e6} MHz · ${state}` +
       (emu.powered ? ` · PC $${hex(m.cpu.pc, 4)}` : '') +

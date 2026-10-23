@@ -1,4 +1,4 @@
-// Giochi miniVIC: avvio diretto in RAM oppure dal menu SD del BIOS
+// miniVIC games: direct start in RAM or from the BIOS SD menu
 
 import { Emulator } from '../../app/Emulator';
 import { GAMES } from '../../machines/games';
@@ -16,16 +16,16 @@ export function gamesPanel(emu: Emulator): HTMLElement {
     },
     h('span', { class: 'game-n' }, String(i + 1)),
     h('span', { class: 'game-title' }, g.title),
-    h('span', { class: 'game-players' }, `${g.players} gioc.`)));
+    h('span', { class: 'game-players' }, `${g.players} ${g.players === '1' ? 'player' : 'players'}`)));
   });
   return h('div', { class: 'panel-body' },
     h('p', { class: 'hint' },
-      'Giochi arcade del miniVIC (TMS9918A + 2x AY-3-8910). Il clic carica il gioco in RAM a $0FD0 e lo avvia; ',
-      'i comandi passano ai joystick. Sono anche sulla SD inserita: menu 3 del BIOS.'),
+      'miniVIC arcade games (TMS9918A + 2x AY-3-8910). A click loads the game into RAM at $0FD0 and starts it; ',
+      'the keys switch to the joysticks. They are also on the inserted SD card: BIOS menu 3.'),
     list,
     h('div', { class: 'keys-help' },
-      h('div', {}, h('b', {}, 'Joystick 1'), ' frecce · Z / Spazio = 1 · X = 2'),
+      h('div', {}, h('b', {}, 'Joystick 1'), ' arrows · Z / Space = 1 · X = 2'),
       h('div', {}, h('b', {}, 'Joystick 2'), ' W A S D · F = 1 · G = 2'),
-      h('div', {}, h('b', {}, 'Gamepad'), ' il primo e il secondo collegati')),
+      h('div', {}, h('b', {}, 'Gamepad'), ' the first and second connected')),
   );
 }

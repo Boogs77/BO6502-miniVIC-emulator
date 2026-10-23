@@ -1,9 +1,9 @@
-// AudioOutput - uscita stereo con Web Audio (AudioWorklet)
+// AudioOutput - stereo output with Web Audio (AudioWorklet)
 //
-// L'emulatore produce blocchi di campioni interlacciati (L, R) per ogni frame e li manda
-// al worklet, che li riproduce da una coda. Il worklet riporta quanti campioni ha in coda:
-// l'emulatore lo usa per restare agganciato al clock della scheda audio del PC
-// (un frame in piu' se la coda si svuota, uno in meno se si allunga troppo).
+// The emulator produces blocks of interleaved samples (L, R) for every frame and sends them
+// to the worklet, which plays them from a queue. The worklet reports how many samples are
+// queued: the emulator uses it to stay locked to the PC sound card clock
+// (one more frame if the queue runs dry, one less if it grows too long).
 
 const WORKLET = `
 class StereoStream extends AudioWorkletProcessor {
@@ -13,7 +13,7 @@ class StereoStream extends AudioWorkletProcessor {
     this.port.onmessage = e => {
       if (e.data === 'clear') { this.q = []; this.off = 0; this.avail = 0; return; }
       this.q.push(e.data); this.avail += e.data.length / 2;
-      // coda troppo lunga (scheda in pausa, tab in background): scarta il vecchio
+      // queue too long (paused tab, background tab): drop the old data
       while (this.avail > sampleRate * 0.3 && this.q.length > 1) {
         const b = this.q.shift(); this.avail -= (b.length - this.off) / 2; this.off = 0;
       }
@@ -39,7 +39,7 @@ export class AudioOutput {
   private ctx: AudioContext | null = null;
   private node: AudioWorkletNode | null = null;
   private starting: Promise<void> | null = null;
-  /** campioni in coda nel worklet (ultimo valore riportato) */
+  /** samples queued in the worklet (last reported value) */
   queued = 0;
 
   get sampleRate(): number {
@@ -50,7 +50,7 @@ export class AudioOutput {
     return this.ctx?.state === 'running' && this.node !== null;
   }
 
-  /** va chiamata da un gesto dell'utente (click, tasto) */
+  /** must be called from a user gesture (click, key) */
   start(): Promise<void> {
     if (this.starting) {
       void this.ctx?.resume();
@@ -82,7 +82,7 @@ export class AudioOutput {
     this.queued = 0;
   }
 
-  /** secondi di audio in coda */
+  /** seconds of queued audio */
   get buffered(): number {
     return this.queued / this.sampleRate;
   }

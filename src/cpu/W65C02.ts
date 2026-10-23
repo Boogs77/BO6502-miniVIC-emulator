@@ -1,10 +1,10 @@
-// W65C02S - core della CPU
+// W65C02S - CPU core
 //
-// Set completo WDC 65C02: istruzioni CMOS (BRA, PHX/PLX, STZ, TSB/TRB, (zp), ...),
-// istruzioni Rockwell sui bit (RMB/SMB/BBR/BBS), WAI e STP, NOP non documentati
-// con le loro lunghezze e i loro cicli. Cicli esatti per istruzione, comprese le
-// penalita' di attraversamento pagina e il ciclo in piu' della modalita' decimale.
-// IRQ sensibile al livello, NMI sul fronte (gestito dalla macchina con nmi()).
+// Full WDC 65C02 set: CMOS instructions (BRA, PHX/PLX, STZ, TSB/TRB, (zp), ...),
+// Rockwell bit instructions (RMB/SMB/BBR/BBS), WAI and STP, undocumented NOPs
+// with their lengths and cycles. Exact cycles per instruction, including the
+// page-crossing penalties and the extra cycle of decimal mode.
+// Level-sensitive IRQ, edge-triggered NMI (handled by the machine with nmi()).
 
 export interface CpuBus {
   read(addr: number): number;
@@ -28,13 +28,13 @@ export class W65C02 {
   pc = 0;
   p = FLAG_U | FLAG_I;
 
-  /** cicli totali eseguiti dall'accensione */
+  /** total cycles executed since power-on */
   cycles = 0;
-  /** linea IRQ (livello): la imposta la macchina */
+  /** IRQ line (level): set by the machine */
   irq = false;
-  /** WAI in corso: la CPU aspetta un interrupt */
+  /** WAI in progress: the CPU waits for an interrupt */
   waiting = false;
-  /** STP eseguito: ferma fino al reset */
+  /** STP executed: stopped until reset */
   stopped = false;
 
   private nmiPending = false;
@@ -54,12 +54,12 @@ export class W65C02 {
     this.cycles += 7;
   }
 
-  /** fronte di discesa della linea NMI */
+  /** falling edge of the NMI line */
   nmi(): void {
     this.nmiPending = true;
   }
 
-  // ---------------- accesso al bus ----------------
+  // ---------------- bus access ----------------
   private rd(a: number): number {
     return this.bus.read(a & 0xFFFF);
   }
@@ -88,7 +88,7 @@ export class W65C02 {
     return this.rd(0x100 | this.sp);
   }
 
-  // ---------------- flag ----------------
+  // ---------------- flags ----------------
   private nz(v: number): number {
     this.p = (this.p & ~(FLAG_N | FLAG_Z)) | (v & FLAG_N) | (v === 0 ? FLAG_Z : 0);
     return v;
@@ -98,8 +98,8 @@ export class W65C02 {
     else this.p &= ~f;
   }
 
-  // ---------------- modi di indirizzamento ----------------
-  // "extra" accumula il ciclo di penalita' per l'attraversamento di pagina
+  // ---------------- addressing modes ----------------
+  // "extra" collects the page-crossing penalty cycle
   private extra = 0;
 
   private zp(): number { return this.fetch(); }
@@ -191,7 +191,7 @@ export class W65C02 {
     this.wr(addr, f.call(this, this.rd(addr)));
   }
 
-  /** salto relativo: +1 ciclo se preso, +1 se cambia pagina */
+  /** relative branch: +1 cycle if taken, +1 if it crosses a page */
   private branch(cond: boolean | number): number {
     const off = this.fetch();
     if (!cond) return 0;
@@ -209,7 +209,7 @@ export class W65C02 {
     this.pc = this.read16(vector);
   }
 
-  /** esegue un'istruzione (o un interrupt) e ritorna i cicli impiegati */
+  /** executes one instruction (or interrupt) and returns the cycles used */
   step(): number {
     if (this.stopped) {
       this.cycles += 1;
@@ -229,7 +229,7 @@ export class W65C02 {
         this.cycles += 7;
         return 7;
       }
-      this.waiting = false; // WAI riprende anche con I=1, senza servire l'IRQ
+      this.waiting = false; // WAI resumes even with I=1, without servicing the IRQ
     }
     if (this.waiting) {
       this.cycles += 1;
@@ -283,7 +283,7 @@ export class W65C02 {
       case 0x74: this.wr(this.zpx(), 0); c = 4; break;
       case 0x9C: this.wr(this.abs(), 0); c = 4; break;
       case 0x9E: this.wr(this.abxW(), 0); c = 5; break;
-      // ---------- trasferimenti ----------
+      // ---------- transfers ----------
       case 0xAA: this.x = this.nz(this.a); c = 2; break;
       case 0xA8: this.y = this.nz(this.a); c = 2; break;
       case 0x8A: this.a = this.nz(this.x); c = 2; break;
@@ -391,7 +391,7 @@ export class W65C02 {
       case 0xC8: this.y = this.nz((this.y + 1) & 0xFF); c = 2; break;
       case 0xCA: this.x = this.nz((this.x - 1) & 0xFF); c = 2; break;
       case 0x88: this.y = this.nz((this.y - 1) & 0xFF); c = 2; break;
-      // ---------- scorrimenti ----------
+      // ---------- shifts ----------
       case 0x0A: this.a = this.asl(this.a); c = 2; break;
       case 0x06: this.rmw(this.zp(), this.asl); c = 5; break;
       case 0x16: this.rmw(this.zpx(), this.asl); c = 6; break;
@@ -412,7 +412,7 @@ export class W65C02 {
       case 0x76: this.rmw(this.zpx(), this.ror); c = 6; break;
       case 0x6E: this.rmw(this.abs(), this.ror); c = 6; break;
       case 0x7E: this.rmw(this.abxR(), this.ror); c = 6; break;
-      // ---------- salti ----------
+      // ---------- jumps ----------
       case 0x4C: this.pc = this.fetch16(); c = 3; break;
       case 0x6C: this.pc = this.read16(this.fetch16()); c = 6; break;
       case 0x7C: this.pc = this.read16((this.fetch16() + this.x) & 0xFFFF); c = 6; break;
@@ -438,7 +438,7 @@ export class W65C02 {
       case 0xD0: c = 2 + this.branch(!(this.p & FLAG_Z)); break;
       case 0xF0: c = 2 + this.branch(this.p & FLAG_Z); break;
       case 0x80: c = 2 + this.branch(true); break;
-      // ---------- flag ----------
+      // ---------- flags ----------
       case 0x18: this.p &= ~FLAG_C; c = 2; break;
       case 0x38: this.p |= FLAG_C; c = 2; break;
       case 0x58: this.p &= ~FLAG_I; c = 2; break;
@@ -446,11 +446,11 @@ export class W65C02 {
       case 0xB8: this.p &= ~FLAG_V; c = 2; break;
       case 0xD8: this.p &= ~FLAG_D; c = 2; break;
       case 0xF8: this.p |= FLAG_D; c = 2; break;
-      // ---------- vari ----------
+      // ---------- misc ----------
       case 0xEA: c = 2; break;
       case 0xCB: this.waiting = true; c = 3; break;
       case 0xDB: this.stopped = true; c = 3; break;
-      // ---------- NOP non documentati ----------
+      // ---------- undocumented NOPs ----------
       case 0x02: case 0x22: case 0x42: case 0x62: case 0x82: case 0xC2: case 0xE2:
         this.fetch(); c = 2; break;
       case 0x44: this.fetch(); c = 3; break;
@@ -466,7 +466,7 @@ export class W65C02 {
     return c;
   }
 
-  /** RMB / SMB / BBR / BBS e NOP da 1 ciclo (colonne 3 e B) */
+  /** RMB / SMB / BBR / BBS and 1-cycle NOPs (columns 3 and B) */
   private bitOps(op: number): number {
     const lo = op & 0x0F;
     const n = (op >> 4) & 7;
@@ -481,6 +481,6 @@ export class W65C02 {
       const set = (v & (1 << n)) !== 0;
       return 5 + this.branch(op & 0x80 ? set : !set);
     }
-    return 1; // xx3 / xxB: NOP da un byte, un ciclo
+    return 1; // xx3 / xxB: one-byte, one-cycle NOP
   }
 }
