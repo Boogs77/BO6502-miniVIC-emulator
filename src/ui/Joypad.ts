@@ -1,7 +1,7 @@
-// Joystick Sega Master System a schermo
+// On-screen Sega Master System joystick
 //
-// Croce direzionale: si preme e si trascina (anche in diagonale) con mouse o dito.
-// Pulsanti 1 e 2 indipendenti: con il multi-touch si usano insieme alla croce.
+// D-pad: press and drag (diagonals too) with the mouse or a finger.
+// Independent buttons 1 and 2: with multi-touch they work together with the D-pad.
 
 import { JOY_DOWN, JOY_FIRE1, JOY_FIRE2, JOY_LEFT, JOY_RIGHT, JOY_UP } from '../boards/Boards';
 import { h } from './dom';
@@ -24,7 +24,7 @@ export class Joypad {
 
   constructor(player: number, onChange: (bits: number) => void) {
     this.onChange = onChange;
-    const pad = svg('svg', { viewBox: '0 0 120 120', class: 'dpad', role: 'img', 'aria-label': `Croce direzionale giocatore ${player + 1}` }) as SVGSVGElement;
+    const pad = svg('svg', { viewBox: '0 0 120 120', class: 'dpad', role: 'img', 'aria-label': `Player ${player + 1} D-pad` }) as SVGSVGElement;
     pad.append(svg('circle', { cx: 60, cy: 60, r: 58, class: 'dpad-base' }));
     const arm = (bit: number, d: string) => {
       const p = svg('path', { d, class: 'dpad-arm' });
@@ -42,7 +42,7 @@ export class Joypad {
     this.bindPad(pad);
 
     const btn = (bit: number, label: string) => {
-      const b = h('button', { class: 'joy-btn', type: 'button', 'aria-label': `Pulsante ${label}` }, label);
+      const b = h('button', { class: 'joy-btn', type: 'button', 'aria-label': `Button ${label}` }, label);
       this.buttons.set(bit, b);
       b.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -73,7 +73,7 @@ export class Joypad {
       const y = (e.clientY - r.top) / r.height - 0.5;
       let bits = 0;
       if (Math.hypot(x, y) > 0.08) {
-        const a = Math.atan2(y, x) * 180 / Math.PI; // 0 = destra, 90 = giu'
+        const a = Math.atan2(y, x) * 180 / Math.PI; // 0 = right, 90 = down
         if (a > -67.5 && a < 67.5) bits |= JOY_RIGHT;
         if (a > 22.5 && a < 157.5) bits |= JOY_DOWN;
         if (a > 112.5 || a < -112.5) bits |= JOY_LEFT;
@@ -105,7 +105,7 @@ export class Joypad {
     this.onChange(this.dirBits | this.fireBits);
   }
 
-  /** mostra lo stato effettivo (mouse + tastiera + gamepad) */
+  /** shows the actual state (mouse + keyboard + gamepad) */
   update(state: number): void {
     for (const [bit, el] of this.arms) el.classList.toggle('on', (state & bit) !== 0);
     for (const [bit, el] of this.buttons) el.classList.toggle('on', (state & bit) !== 0);

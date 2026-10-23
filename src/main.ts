@@ -1,4 +1,4 @@
-// BO6502 / miniVIC emulator - punto d'ingresso
+// BO6502 / miniVIC emulator - entry point
 import './style.css';
 import { App } from './ui/App';
 

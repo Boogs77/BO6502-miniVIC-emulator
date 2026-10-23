@@ -1,12 +1,12 @@
 // W65C22 VIA - Versatile Interface Adapter
 //
-//   porte A/B con DDR: lettura = (OR & DDR) | (pin & ~DDR)
-//   CA1/CB1 ingressi di controllo (fronte scelto da PCR), CA2/CB2 in modo ingresso
-//   T1 one-shot / free-run con uscita su PB7, T2 one-shot (conteggio impulsi non usato)
-//   SR memorizzato (nessuno scorrimento: non usato dalle schede BO6502)
-//   IFR / IER e linea IRQ (attiva quando IFR & IER != 0)
-// Le periferiche collegate leggono le uscite con portA()/portB() e forniscono gli
-// ingressi con inputA/inputB; i cambi di uscita arrivano in onPortAChange/onPortBChange.
+//   ports A/B with DDR: read = (OR & DDR) | (pin & ~DDR)
+//   CA1/CB1 control inputs (edge chosen by PCR), CA2/CB2 in input mode
+//   T1 one-shot / free-run with output on PB7, T2 one-shot (pulse counting not used)
+//   SR stored (no shifting: not used by the BO6502 boards)
+//   IFR / IER and IRQ line (active when IFR & IER != 0)
+// Connected peripherals read the outputs with portA()/portB() and provide the
+// inputs through inputA/inputB; output changes arrive in onPortAChange/onPortBChange.
 
 export const IFR_CA2 = 0x01;
 export const IFR_CA1 = 0x02;
@@ -35,13 +35,13 @@ export class VIA6522 {
   private t2Running = false;
   private pb7 = 1;
 
-  /** livello dei pin in ingresso (le periferiche li impostano; 1 = alto) */
+  /** level of the input pins (set by the peripherals; 1 = high) */
   inputA = 0xFF;
   inputB = 0xFF;
 
   onPortAChange: (value: number) => void = () => {};
   onPortBChange: (value: number) => void = () => {};
-  /** chiamata quando cambia la linea IRQ */
+  /** called when the IRQ line changes */
   onIrq: (active: boolean) => void = () => {};
 
   private irqLine = false;
@@ -58,7 +58,7 @@ export class VIA6522 {
     this.onPortBChange(this.portB());
   }
 
-  /** valore sui pin della porta A (uscite + ingressi) */
+  /** value on the port A pins (outputs + inputs) */
   portA(): number {
     return ((this.ora & this.ddra) | (this.inputA & ~this.ddra)) & 0xFF;
   }
@@ -69,7 +69,7 @@ export class VIA6522 {
     return v;
   }
 
-  /** linea CA1 dall'esterno: genera l'interrupt sul fronte scelto da PCR bit 0 */
+  /** external CA1 line: raises the interrupt on the edge chosen by PCR bit 0 */
   setCA1(level: number): void {
     level = level ? 1 : 0;
     if (level === this.ca1) return;
@@ -86,19 +86,19 @@ export class VIA6522 {
     this.cb1 = level;
   }
 
-  /** impulso su CA1 (fronte attivo e ritorno) */
+  /** pulse on CA1 (active edge and back) */
   pulseCA1(): void {
     const positive = (this.pcr & 0x01) !== 0;
     this.setCA1(positive ? 0 : 1);
     this.setCA1(positive ? 1 : 0);
   }
 
-  // ---------------- registri ----------------
+  // ---------------- registers ----------------
   read(reg: number): number {
     switch (reg & 0x0F) {
       case 0x0: {
         this.clearIfr(IFR_CB1 | ((this.pcr & 0xA0) === 0x20 ? 0 : IFR_CB2));
-        // i bit in uscita si leggono dal registro, gli ingressi dai pin
+        // output bits are read from the register, inputs from the pins
         return ((this.orb & this.ddrb) | (this.portB() & ~this.ddrb)) & 0xFF;
       }
       case 0x1:
@@ -117,11 +117,11 @@ export class VIA6522 {
       case 0xC: return this.pcr;
       case 0xD: return this.ifr | (this.ifr & this.ier & 0x7F ? 0x80 : 0);
       case 0xE: return this.ier | 0x80;
-      default: return this.portA(); // 0xF: ORA senza handshake
+      default: return this.portA(); // 0xF: ORA without handshake
     }
   }
 
-  /** lettura senza effetti collaterali (debugger) */
+  /** read without side effects (debugger) */
   peek(reg: number): number {
     switch (reg & 0x0F) {
       case 0x0: return this.portB();
@@ -180,7 +180,7 @@ export class VIA6522 {
     }
   }
 
-  /** fa avanzare i timer di n cicli di PHI2 */
+  /** advances the timers by n PHI2 cycles */
   tick(n: number): void {
     // T1
     let c = this.t1Counter - n;
@@ -188,7 +188,7 @@ export class VIA6522 {
       if (this.t1Running) {
         this.setIfr(IFR_T1);
         if (this.acr & 0x40) {
-          // free-run: periodo latch + 2
+          // free-run: period latch + 2
           const period = this.t1Latch + 2;
           while (c < -1) c += period;
           if (this.acr & 0x80) { this.pb7 ^= 1; this.onPortBChange(this.portB()); }
@@ -203,7 +203,7 @@ export class VIA6522 {
     }
     this.t1Counter = c < 0 ? c + 0x10000 : c;
 
-    // T2 (modo timer)
+    // T2 (timer mode)
     if (!(this.acr & 0x20)) {
       let d = this.t2Counter - n;
       if (d < 0) {

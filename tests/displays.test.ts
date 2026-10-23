@@ -1,7 +1,7 @@
-// Schede di uscita del BO6502 con programmi 65C02 reali (tests/fixtures/asm, assemblati con vasm)
-//   Big LCD T6963: BIGLCD_HELLOWORLD.ASM di github.com/Boogs77/BIGLCD-65c22_test
-//   LCD 16x2: routine a 4 bit di lcd.s del BIOS, con lettura del busy flag
-//   LED test: esempio del README della scheda
+// BO6502 output boards with real 65C02 programs (tests/fixtures/asm, assembled with vasm)
+//   Big LCD T6963: BIGLCD_HELLOWORLD.ASM from github.com/Boogs77/BIGLCD-65c22_test
+//   LCD 16x2: 4-bit routines of the BIOS lcd.s, with busy flag reads
+//   LED test: example from the board README
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildMachine, defaultConfig, MachineConfig } from '../src/machines/profiles';
@@ -34,13 +34,13 @@ function testBigLcd(): void {
   const m = machine(() => {});
   run(m, fixture('biglcd_hello.bin'), 1);
   let t = 0;
-  while (m.cpu.pc < 0xFE00 && t < 600) { runFrames(m, 10); t += 10; } // finisce con JMP $FE00 (WozMon)
-  console.log(`      Big LCD pronto dopo ${(t / 60).toFixed(1)} s emulati`);
+  while (m.cpu.pc < 0xFE00 && t < 600) { runFrames(m, 10); t += 10; } // it ends with JMP $FE00 (WozMon)
+  console.log(`      Big LCD ready after ${(t / 60).toFixed(1)} emulated s`);
   const lcd = m.board<BigLcdBoard>('biglcd')!.lcd;
   let text = '';
   for (let i = 0; i < 13; i++) text += String.fromCharCode(lcd.ram[lcd.textHome + i] + 0x20);
-  assert(text === 'Hello, World!', `testo nella RAM del T6963: "${text}"`);
-  assert(lcd.display === 0x07 && lcd.textArea === 20 && lcd.graphicHome === 0x0800, 'registri del T6963');
+  assert(text === 'Hello, World!', `text in the T6963 RAM: "${text}"`);
+  assert(lcd.display === 0x07 && lcd.textArea === 20 && lcd.graphicHome === 0x0800, 'T6963 registers');
   const px = new Uint8Array(T6963_W * T6963_H);
   lcd.render(px, true);
   writePng('biglcd_hello', T6963_W * 2, T6963_H * 2, (x, y) => (px[(y >> 1) * T6963_W + (x >> 1)] ? [236, 244, 255] : [30, 52, 196]));
@@ -54,8 +54,8 @@ function testCharLcd(): void {
   run(m, fixture('lcd16.bin'), 30);
   const lcd = m.board<LcdBoard>('lcd')!.lcd;
   const line = (r: number) => Array.from({ length: 16 }, (_, c) => String.fromCharCode(lcd.charAt(r, c))).join('').trimEnd();
-  assert(!lcd.eightBit && lcd.twoLines && lcd.displayOn && lcd.cursorOn, 'stato dell’HD44780');
-  assert(line(0) === 'BO6502 LCD 16x2' && line(1) === 'HD44780 4 BIT!', `righe: "${line(0)}" / "${line(1)}"`);
+  assert(!lcd.eightBit && lcd.twoLines && lcd.displayOn && lcd.cursorOn, 'HD44780 state');
+  assert(line(0) === 'BO6502 LCD 16x2' && line(1) === 'HD44780 4 BIT!', `lines: "${line(0)}" / "${line(1)}"`);
   writePng('lcd16', 16 * 6 * 3, 2 * 9 * 3, (x, y) => {
     const c = Math.floor(x / 18), r = Math.floor(y / 27);
     const gx = Math.floor((x % 18) / 3), gy = Math.floor((y % 27) / 3);

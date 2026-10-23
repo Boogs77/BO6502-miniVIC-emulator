@@ -1,4 +1,4 @@
-// Tutti i giochi miniVIC: caricati dopo il BIOS (come il pannello Giochi) devono arrivare al titolo
+// All the miniVIC games: loaded after the BIOS (like the Games panel) they must reach their title screen
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildMachine, defaultConfig } from '../src/machines/profiles';
@@ -18,6 +18,6 @@ export default async function () {
     runFrames(m, 450);
     savePng(m, 'title_' + g.file.replace('.bin', ''));
     const colors = new Set(m.vdu!.vdp.frame);
-    assert(colors.size >= 3, `${g.title}: schermata del titolo vuota (${colors.size} colori)`);
+    assert(colors.size >= 3, `${g.title}: empty title screen (${colors.size} colours)`);
   }
 }

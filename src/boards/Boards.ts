@@ -1,8 +1,8 @@
-// Schede del sistema BO6502 / miniVIC
+// Boards of the BO6502 / miniVIC system
 //
-// Ogni scheda decodifica uno spazio di indirizzi a partire da "base" e usa solo i bit
-// bassi dell'indirizzo, come i 74LS138 delle schede reali: gli indirizzi si ripetono
-// (mirror) all'interno dello spazio decodificato.
+// Each board decodes an address space starting at "base" and uses only the low
+// address bits, like the 74LS138s of the real boards: addresses repeat (mirror)
+// inside the decoded space.
 
 import { Board, BoardContext, BoardType, IrqLine } from '../core/Board';
 import { TMS9918A } from '../devices/TMS9918A';
@@ -40,7 +40,7 @@ export abstract class BaseBoard implements Board {
 }
 
 // ---------------------------------------------------------------- VDU TMS9918A
-/** VDU: A0 = 0 porta dati, A0 = 1 porta registri/stato. INT su IRQ (BO6502) o NMI (miniVIC). */
+/** VDU: A0 = 0 data port, A0 = 1 register/status port. INT on IRQ (BO6502) or NMI (miniVIC). */
 export class VduBoard extends BaseBoard {
   readonly type = 'vdu';
   readonly label = 'VDU TMS9918A';
@@ -97,7 +97,7 @@ export class KeyboardBoard extends BaseBoard {
 }
 
 // ---------------------------------------------------------------- JOYSTICK
-/** bit dei joystick (1 = premuto nello stato; sui pin la logica e' attiva bassa) */
+/** joystick bits (1 = pressed in the state; on the pins the logic is active low) */
 export const JOY_UP = 0x01;
 export const JOY_DOWN = 0x02;
 export const JOY_LEFT = 0x04;
@@ -105,13 +105,13 @@ export const JOY_RIGHT = 0x08;
 export const JOY_FIRE1 = 0x10;
 export const JOY_FIRE2 = 0x20;
 
-/** due joystick Sega Master System: P1 su porta A, P2 su porta B */
+/** two Sega Master System joysticks: P1 on port A, P2 on port B */
 export class JoystickBoard extends BaseBoard {
   readonly type = 'joystick';
   readonly label = 'Joystick SMS W65C22';
   readonly size = 0x10;
   readonly via = new VIA6522();
-  /** stato dei due joystick (indice 0 = P1, 1 = P2), 1 = premuto */
+  /** state of the two joysticks (index 0 = P1, 1 = P2), 1 = pressed */
   readonly state = [0, 0];
 
   constructor(base = 0xD1A0) {
@@ -138,7 +138,7 @@ const SD_MOSI = 0x04; // PA2
 const SD_SCK = 0x08;  // PA3
 const SD_CS = 0x10;   // PA4
 
-/** SD card su porta A di una W65C22, SPI a bit (PA1 MISO, PA2 MOSI, PA3 SCK, PA4 CS) */
+/** SD card on port A of a W65C22, bit-banged SPI (PA1 MISO, PA2 MOSI, PA3 SCK, PA4 CS) */
 export class SdCardBoard extends BaseBoard {
   readonly type = 'sdcard';
   readonly label = 'SD Card W65C22';
@@ -164,9 +164,9 @@ export class SdCardBoard extends BaseBoard {
 
 // ---------------------------------------------------------------- AUDIO 2 x AY-3-8910
 /**
- * Scheda audio stereo: A2 sceglie il chip (0 = destro, 1 = sinistro),
- * A0 sceglie latch del registro (0) o dato (1). Es. miniVIC: $D380/$D381 destro, $D384/$D385 sinistro.
- * I due PSG avanzano insieme al ciclo CPU corrente prima di ogni accesso.
+ * Stereo audio board: A2 selects the chip (0 = right, 1 = left),
+ * A0 selects register latch (0) or data (1). E.g. miniVIC: $D380/$D381 right, $D384/$D385 left.
+ * The two PSGs advance together to the current CPU cycle before every access.
  */
 export class AudioBoard extends BaseBoard {
   readonly type = 'audio';
@@ -174,7 +174,7 @@ export class AudioBoard extends BaseBoard {
   readonly size = 0x10;
   readonly right = new AY38910();
   readonly left = new AY38910();
-  /** clock dei PSG in Hz (sulle schede reali e' il clock di sistema) */
+  /** PSG clock in Hz (on the real boards it is the system clock) */
   psgHz = 1_000_000;
 
   private lastCycle = 0;
@@ -217,7 +217,7 @@ export class AudioBoard extends BaseBoard {
     return o & 1 ? this.chip(o).readData() : 0xFF;
   }
 
-  /** porta i PSG al ciclo CPU corrente, producendo i campioni audio */
+  /** brings the PSGs to the current CPU cycle, producing the audio samples */
   sync(): void {
     const now = this.ctx.cycles();
     const elapsed = now - this.lastCycle;

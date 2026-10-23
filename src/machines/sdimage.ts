@@ -1,18 +1,18 @@
-// Immagine SD per il menu "SD PROGRAMS" del BIOS - stesso formato di make_sd.py
+// SD image for the BIOS "SD PROGRAMS" menu - same format as make_sd.py
 //
-//   programma N (1..255) -> blocco da 32KB all'offset (N-1) * $8000, dati a blocco + $1000
-//   directory a pagine (v3): la pagina P sta nel primo settore del blocco P
-//     +0..3 "BOGS"  +4 versione 3  +5 programmi della pagina (1..9)
-//     +6..14 flag (bit0 = esegui dopo il caricamento)  +15 totale programmi
-//     +16 + i*8  load (lo,hi), lunghezza (lo,hi), entry (lo,hi), 0, 0
-//     +96 + i*32 nome (ASCII, max 31 caratteri + $00)
+//   program N (1..255) -> 32KB block at offset (N-1) * $8000, data at block + $1000
+//   paged directory (v3): page P is in the first sector of block P
+//     +0..3 "BOGS"  +4 version 3  +5 programs in the page (1..9)
+//     +6..14 flags (bit0 = run after loading)  +15 total programs
+//     +16 + i*8  load (lo,hi), length (lo,hi), entry (lo,hi), 0, 0
+//     +96 + i*32 name (ASCII, max 31 characters + $00)
 
 export interface SdProgram {
   name: string;
   data: Uint8Array;
   load: number;
   entry: number;
-  /** esegui subito dopo il caricamento */
+  /** run right after loading */
   run: boolean;
 }
 
@@ -24,23 +24,23 @@ const PER_PAGE = 9;
 const MIN_LOAD = 0x0F00;
 const RAM_END = 0x8000;
 
-/** controlla un programma; ritorna un messaggio d'errore o null */
+/** checks a program; returns an error message or null */
 export function checkProgram(p: SdProgram): string | null {
-  if (!p.data.length) return 'file vuoto';
-  if (p.data.length > PAYLOAD) return `troppo grande (${p.data.length} byte, max ${PAYLOAD})`;
-  if (p.load < MIN_LOAD) return `caricamento sotto $${MIN_LOAD.toString(16).toUpperCase()}`;
-  if (p.load + p.data.length > RAM_END) return 'supera la fine della RAM ($7FFF)';
-  if (p.entry < p.load || p.entry >= p.load + p.data.length) return 'entry fuori dal programma';
+  if (!p.data.length) return 'empty file';
+  if (p.data.length > PAYLOAD) return `too big (${p.data.length} bytes, max ${PAYLOAD})`;
+  if (p.load < MIN_LOAD) return `loads below $${MIN_LOAD.toString(16).toUpperCase()}`;
+  if (p.load + p.data.length > RAM_END) return 'goes past the end of RAM ($7FFF)';
+  if (p.entry < p.load || p.entry >= p.load + p.data.length) return 'entry outside the program';
   return null;
 }
 
-/** entry di default come make_sd.py: $1000 se cade nell'immagine, altrimenti l'indirizzo di caricamento */
+/** default entry like make_sd.py: $1000 if it falls inside the image, otherwise the load address */
 export function defaultEntry(load: number, length: number): number {
   return load <= 0x1000 && 0x1000 < load + length ? 0x1000 : load;
 }
 
 export function buildSdImage(programs: SdProgram[]): Uint8Array {
-  if (programs.length < 1 || programs.length > 255) throw new Error('servono da 1 a 255 programmi');
+  if (programs.length < 1 || programs.length > 255) throw new Error('1 to 255 programs are required');
   const image = new Uint8Array(programs.length * BLOCK);
   programs.forEach((p, n) => {
     const err = checkProgram(p);
@@ -71,7 +71,7 @@ export function buildSdImage(programs: SdProgram[]): Uint8Array {
   return image;
 }
 
-/** legge la directory di un'immagine (per mostrarne il contenuto) */
+/** reads the directory of an image (to show its content) */
 export function readSdDirectory(image: Uint8Array): Array<{ name: string; load: number; length: number; entry: number; run: boolean }> {
   const out = [];
   for (let pg = 0; pg * BLOCK + SECTOR <= image.length; pg++) {
@@ -89,7 +89,7 @@ export function readSdDirectory(image: Uint8Array): Array<{ name: string; load: 
         run: (d[6 + i] & 1) !== 0,
       });
     }
-    if (d[4] === 2) break; // la v2 ha una sola pagina
+    if (d[4] === 2) break; // v2 has a single page
   }
   return out;
 }

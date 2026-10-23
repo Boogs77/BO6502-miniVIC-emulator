@@ -1,9 +1,9 @@
-// Machine - CPU, memoria, bus e schede di una macchina BO6502 / miniVIC
+// Machine - CPU, memory, bus and boards of a BO6502 / miniVIC machine
 //
-// Bus: la decodifica e' a blocchi di 16 byte. Ogni blocco punta a una scheda oppure
-// alla RAM ($0000-$7FFF) o alla ROM ($8000-$FFFF). Nei "buchi" della ROM (le zone di I/O
-// disattivate con i jumper J-CS della ROM multi) senza scheda si legge il bus aperto.
-// Tempo: un frame NTSC = 262 righe; alla fine di ogni riga il VDP disegna la riga.
+// Bus: decoding works in 16-byte blocks. Each block points to a board or to
+// RAM ($0000-$7FFF) or ROM ($8000-$FFFF). In the ROM "holes" (the I/O areas disabled
+// with the J-CS jumpers of the multi ROM) without a board, the open bus is read.
+// Timing: one NTSC frame = 262 lines; at the end of each line the VDP draws the line.
 
 import { W65C02 } from '../cpu/W65C02';
 import { Board, BoardContext } from './Board';
@@ -15,7 +15,7 @@ export const NTSC_FPS = 59.922743;
 
 export interface MachineOptions {
   cpuHz: number;
-  /** zone senza ROM ([inizio, fine] inclusi) */
+  /** areas without ROM ([start, end] inclusive) */
   romHoles: Array<[number, number]>;
 }
 
@@ -29,9 +29,9 @@ export class Machine {
   ramEnabled = true;
   romEnabled = true;
 
-  /** numero di frame eseguiti */
+  /** number of frames executed */
   frame = 0;
-  /** ultimo valore sul bus dati (per il bus aperto) */
+  /** last value on the data bus (for the open bus) */
   private busValue = 0xFF;
 
   private readonly map = new Int16Array(4096).fill(-1);
@@ -44,7 +44,7 @@ export class Machine {
   private lineCycles: number;
   private lineTarget = 0;
 
-  /** chiamata quando la CPU legge/scrive (solo se impostata: per i breakpoint) */
+  /** called when the CPU reads/writes (only when set: for breakpoints) */
   watch: ((addr: number, write: boolean) => void) | null = null;
 
   constructor(opts: MachineOptions) {
@@ -64,14 +64,14 @@ export class Machine {
     };
   }
 
-  // ---------------- configurazione ----------------
+  // ---------------- configuration ----------------
   addBoard(board: Board): void {
     this.boards.push(board);
     board.attach(this.ctx);
     this.rebuildMap();
   }
 
-  /** ricostruisce la mappa del bus (dopo un cambio di indirizzo) */
+  /** rebuilds the bus map (after an address change) */
   rebuildMap(): void {
     this.map.fill(-1);
     this.boards.forEach((b, i) => {
@@ -83,7 +83,7 @@ export class Machine {
     this.frameEnders = this.boards.filter(b => b.endFrame);
   }
 
-  /** prima scheda di un tipo */
+  /** first board of a type */
   board<T extends Board>(type: Board['type']): T | undefined {
     return this.boards.find(b => b.type === type) as T | undefined;
   }
@@ -92,7 +92,7 @@ export class Machine {
     return this.board<VduBoard>('vdu');
   }
 
-  /** scheda che decodifica un indirizzo (per il debugger) */
+  /** board that decodes an address (for the debugger) */
   boardAt(addr: number): Board | undefined {
     const i = this.map[addr >> 4];
     return i >= 0 ? this.boards[i] : undefined;
@@ -100,12 +100,12 @@ export class Machine {
 
   loadRom(data: Uint8Array): void {
     this.rom.fill(0xFF);
-    // un'immagine piu' corta di 32 KB si allinea alla fine (i vettori stanno a $FFFA)
+    // an image shorter than 32 KB is aligned to the end (the vectors are at $FFFA)
     const d = data.length > 0x8000 ? data.subarray(data.length - 0x8000) : data;
     this.rom.set(d, 0x8000 - d.length);
   }
 
-  /** scrive dati direttamente in memoria (RAM, o ROM se l'indirizzo e' >= $8000) */
+  /** writes data straight into memory (RAM only; addresses >= $8000 are skipped) */
   poke(addr: number, data: ArrayLike<number>): void {
     for (let i = 0; i < data.length; i++) {
       const a = (addr + i) & 0xFFFF;
@@ -119,7 +119,7 @@ export class Machine {
       const was = this.nmiSources.size > 0;
       if (active) this.nmiSources.add(board);
       else this.nmiSources.delete(board);
-      // NMI e' sensibile al fronte: scatta quando la linea (wired-OR) diventa attiva
+      // NMI is edge-triggered: it fires when the (wired-OR) line becomes active
       if (!was && this.nmiSources.size > 0) this.cpu.nmi();
     } else if (board.irqLine === 'irq') {
       if (active) this.irqSources.add(board);
@@ -140,7 +140,7 @@ export class Machine {
     } else if (this.romEnabled && !this.romHole[addr >> 4]) {
       v = this.rom[addr - 0x8000];
     } else {
-      v = addr >> 8; // bus aperto: resta l'ultimo byte letto (di solito l'alto dell'indirizzo)
+      v = addr >> 8; // open bus: the last byte read remains (usually the address high byte)
     }
     this.busValue = v;
     if (this.watch) this.watch(addr, false);
@@ -159,7 +159,7 @@ export class Machine {
     if (this.watch) this.watch(addr, true);
   }
 
-  /** lettura senza effetti collaterali */
+  /** read without side effects */
   peek(addr: number): number {
     const i = this.map[addr >> 4];
     if (i >= 0) {
@@ -171,7 +171,7 @@ export class Machine {
     return 0xFF;
   }
 
-  // ---------------- esecuzione ----------------
+  // ---------------- execution ----------------
   reset(): void {
     for (const b of this.boards) b.reset();
     this.irqSources.clear();
@@ -181,10 +181,10 @@ export class Machine {
     this.lineTarget = this.cpu.cycles;
   }
 
-  /** contenuto della RAM all'accensione: casuale come le SRAM reali, oppure azzerata */
+  /** RAM content at power-on: random like real SRAMs, or cleared */
   randomRam = false;
 
-  /** accensione: inizializza la RAM, poi reset */
+  /** power-on: initialises the RAM, then resets */
   powerOn(): void {
     if (this.randomRam) for (let i = 0; i < this.ram.length; i++) this.ram[i] = (Math.random() * 256) | 0;
     else this.ram.fill(0);
@@ -196,12 +196,12 @@ export class Machine {
     this.reset();
   }
 
-  /** breakpoint: se restituisce true, l'esecuzione si ferma prima dell'istruzione */
+  /** breakpoint: if it returns true, execution stops before the instruction */
   breakpoint: ((pc: number) => boolean) | null = null;
-  /** true se l'ultimo runFrame si e' fermato su un breakpoint */
+  /** true if the last runFrame stopped on a breakpoint */
   hitBreakpoint = false;
 
-  /** esegue una singola istruzione (passo del debugger) */
+  /** executes a single instruction (debugger step) */
   stepInstruction(): void {
     const c = this.cpu.step();
     for (const t of this.tickers) t.tick!(c);
@@ -220,7 +220,7 @@ export class Machine {
     }
   }
 
-  /** esegue fino alla fine del frame corrente; false se fermato da un breakpoint */
+  /** runs to the end of the current frame; false if stopped by a breakpoint */
   runFrame(): boolean {
     const cpu = this.cpu;
     const tickers = this.tickers;

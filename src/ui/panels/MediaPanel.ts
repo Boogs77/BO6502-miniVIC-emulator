@@ -1,4 +1,4 @@
-// ROM, programmi in RAM e scheda SD
+// ROM, programs in RAM and SD card
 
 import { Emulator } from '../../app/Emulator';
 import { buildSdImage, checkProgram, defaultEntry, readSdDirectory, SdProgram } from '../../machines/sdimage';
@@ -15,23 +15,23 @@ export class MediaPanel {
 
   constructor(emu: Emulator) {
     this.emu = emu;
-    const loadAddr = h('input', { class: 'hex', value: '0FD0', size: 5, 'aria-label': 'Indirizzo di caricamento' });
-    const entryAddr = h('input', { class: 'hex', value: '1000', size: 5, 'aria-label': 'Indirizzo di avvio' });
+    const loadAddr = h('input', { class: 'hex', value: '0FD0', size: 5, 'aria-label': 'Load address' });
+    const entryAddr = h('input', { class: 'hex', value: '1000', size: 5, 'aria-label': 'Start address' });
     const autorun = h('input', { type: 'checkbox', checked: true });
 
     this.el = h('div', { class: 'panel-body' },
       h('h3', {}, 'ROM (EEPROM AT28C256, 32 KB)'),
       this.romInfo,
       h('div', { class: 'row' },
-        h('button', { type: 'button', onclick: () => this.loadRom() }, 'Carica ROM .bin'),
-        h('button', { type: 'button', onclick: () => emu.loadDefaultRom().then(() => { emu.machine.loadRom(emu.romData!); emu.onState(); }) }, 'ROM predefinita')),
-      h('p', { class: 'hint' }, 'Un file da 32 KB copre $8000-$FFFF; uno più corto si allinea alla fine (vettori a $FFFA). Effetto al prossimo reset.'),
+        h('button', { type: 'button', onclick: () => this.loadRom() }, 'Load ROM .bin'),
+        h('button', { type: 'button', onclick: () => emu.loadDefaultRom().then(() => { emu.machine.loadRom(emu.romData!); emu.onState(); }) }, 'Default ROM')),
+      h('p', { class: 'hint' }, 'A 32 KB file covers $8000-$FFFF; a shorter one is aligned to the end (vectors at $FFFA). Takes effect at the next reset.'),
 
-      h('h3', {}, 'Programma in RAM'),
+      h('h3', {}, 'Program in RAM'),
       h('div', { class: 'row' },
-        h('label', {}, 'Carica a $', loadAddr),
-        h('label', {}, 'Avvia da $', entryAddr),
-        h('label', {}, autorun, ' avvia')),
+        h('label', {}, 'Load at $', loadAddr),
+        h('label', {}, 'Start at $', entryAddr),
+        h('label', {}, autorun, ' run')),
       h('div', { class: 'row' },
         h('button', {
           type: 'button',
@@ -39,34 +39,34 @@ export class MediaPanel {
             const [f] = await pickFile('.bin,.prg,.o65,.rom,*/*');
             if (!f) return;
             const load = parseHex(loadAddr.value), entry = parseHex(entryAddr.value);
-            if (load === null || entry === null) return emu.onMessage('Indirizzo non valido', 'error');
+            if (load === null || entry === null) return emu.onMessage('Invalid address', 'error');
             emu.loadProgram(await readFile(f), load, autorun.checked ? entry : -1);
-            emu.onMessage(`${f.name} caricato a $${hex(load, 4)}`);
+            emu.onMessage(`${f.name} loaded at $${hex(load, 4)}`);
           },
-        }, 'Carica .bin'),
-        h('button', { type: 'button', onclick: () => this.loadWozmon() }, 'Carica dump WozMon .txt')),
-      h('p', { class: 'hint' }, 'Il dump WozMon ("0FD0: 4C 27 11 ...") si carica agli indirizzi indicati nelle righe.'),
+        }, 'Load .bin'),
+        h('button', { type: 'button', onclick: () => this.loadWozmon() }, 'Load WozMon dump .txt')),
+      h('p', { class: 'hint' }, 'A WozMon dump ("0FD0: 4C 27 11 ...") is loaded at the addresses written in its lines.'),
 
-      h('h3', {}, 'Demo delle schede (BO6502)'),
+      h('h3', {}, 'Board demos (BO6502)'),
       h('div', { class: 'row' },
         ...([['biglcd_hello.bin', 'biglcd', 'Big LCD: Hello, World!'], ['lcd16.bin', 'lcd', 'LCD 16x2'], ['leds.bin', 'leds', 'LED test']] as const)
           .map(([file, board, label]) => h('button', {
             type: 'button',
             onclick: () => emu.runDemo(file, board).catch(e => emu.onMessage(String(e), 'error')),
           }, label))),
-      h('p', { class: 'hint' }, 'Programmi a $1000: Big LCD dal repo BIGLCD-65c22_test, LCD 16x2 con le routine di lcd.s, LED con l’esempio del README.'),
+      h('p', { class: 'hint' }, 'Programs at $1000: Big LCD from the BIGLCD-65c22_test repo, LCD 16x2 with the lcd.s routines, LEDs with the README example.'),
 
-      h('h3', {}, 'Scheda SD'),
+      h('h3', {}, 'SD card'),
       this.sdInfo,
       this.sdList,
       h('div', { class: 'row' },
-        h('button', { type: 'button', onclick: () => this.insertImage() }, 'Inserisci immagine .img'),
-        h('button', { type: 'button', onclick: () => emu.loadGamesSd().then(() => emu.setSdImage(emu.sdImage, emu.sdName)) }, 'SD con i giochi'),
-        h('button', { type: 'button', onclick: () => emu.setSdImage(null, '') }, 'Estrai'),
-        h('button', { type: 'button', onclick: () => emu.sdImage && download(emu.sdImage, 'sd.img') }, 'Scarica .img')),
-      h('h3', {}, 'Crea una SD (come make_sd.py)'),
+        h('button', { type: 'button', onclick: () => this.insertImage() }, 'Insert .img image'),
+        h('button', { type: 'button', onclick: () => emu.loadGamesSd().then(() => emu.setSdImage(emu.sdImage, emu.sdName)) }, 'Games SD'),
+        h('button', { type: 'button', onclick: () => emu.setSdImage(null, '') }, 'Eject'),
+        h('button', { type: 'button', onclick: () => emu.sdImage && download(emu.sdImage, 'sd.img') }, 'Download .img')),
+      h('h3', {}, 'Build an SD card (like make_sd.py)'),
       h('div', { class: 'row' },
-        h('button', { type: 'button', onclick: () => this.addPrograms() }, 'Aggiungi programmi .bin')),
+        h('button', { type: 'button', onclick: () => this.addPrograms() }, 'Add .bin programs')),
       this.builder,
     );
     this.update();
@@ -76,7 +76,7 @@ export class MediaPanel {
     const [f] = await pickFile('.bin,.rom');
     if (!f) return;
     this.emu.setRom(await readFile(f), f.name);
-    this.emu.onMessage(`ROM ${f.name} caricata: premi RESET`);
+    this.emu.onMessage(`ROM ${f.name} loaded: press RESET`);
   }
 
   private async loadWozmon(): Promise<void> {
@@ -93,14 +93,14 @@ export class MediaPanel {
       this.emu.loadProgram(Uint8Array.from(bytes), addr, -1);
       count += bytes.length;
     }
-    this.emu.onMessage(count ? `${count} byte caricati da $${hex(first, 4)}` : 'Nessuna riga "ADDR: byte" nel file', count ? 'info' : 'error');
+    this.emu.onMessage(count ? `${count} bytes loaded from $${hex(first, 4)}` : 'No "ADDR: bytes" line in the file', count ? 'info' : 'error');
   }
 
   private async insertImage(): Promise<void> {
     const [f] = await pickFile('.img,.bin,*/*');
     if (!f) return;
     const data = await readFile(f);
-    if (data.length < 512 || data.length % 512) return this.emu.onMessage('L’immagine deve essere un multiplo di 512 byte', 'error');
+    if (data.length < 512 || data.length % 512) return this.emu.onMessage('The image size must be a multiple of 512 bytes', 'error');
     this.emu.setSdImage(data, f.name);
   }
 
@@ -118,15 +118,15 @@ export class MediaPanel {
     this.builder.replaceChildren();
     if (!this.pending.length) return;
     const table = h('table', { class: 'sd-table' },
-      h('tr', {}, h('th', {}, 'Nome'), h('th', {}, 'Load'), h('th', {}, 'Entry'), h('th', {}, 'Esegui'), h('th', {}, '')));
+      h('tr', {}, h('th', {}, 'Name'), h('th', {}, 'Load'), h('th', {}, 'Entry'), h('th', {}, 'Run'), h('th', {}, '')));
     this.pending.forEach((p, i) => {
-      const name = h('input', { value: p.name, maxlength: 31, 'aria-label': 'Nome nel menu' });
+      const name = h('input', { value: p.name, maxlength: 31, 'aria-label': 'Name in the menu' });
       name.addEventListener('change', () => { p.name = name.value; });
-      const load = h('input', { class: 'hex', value: hex(p.load, 4), size: 5, 'aria-label': 'Indirizzo di caricamento' });
-      const entry = h('input', { class: 'hex', value: hex(p.entry, 4), size: 5, 'aria-label': 'Indirizzo di avvio' });
+      const load = h('input', { class: 'hex', value: hex(p.load, 4), size: 5, 'aria-label': 'Load address' });
+      const entry = h('input', { class: 'hex', value: hex(p.entry, 4), size: 5, 'aria-label': 'Start address' });
       load.addEventListener('change', () => { const v = parseHex(load.value); if (v !== null) p.load = v; this.renderBuilder(); });
       entry.addEventListener('change', () => { const v = parseHex(entry.value); if (v !== null) p.entry = v; this.renderBuilder(); });
-      const run = h('input', { type: 'checkbox', checked: p.run, 'aria-label': 'Esegui dopo il caricamento' });
+      const run = h('input', { type: 'checkbox', checked: p.run, 'aria-label': 'Run after loading' });
       run.addEventListener('change', () => { p.run = run.checked; });
       const err = checkProgram(p);
       table.append(h('tr', { class: err ? 'bad' : '' },
@@ -140,20 +140,20 @@ export class MediaPanel {
         onclick: () => {
           try {
             const img = buildSdImage(this.pending);
-            this.emu.setSdImage(img, `SD creata (${this.pending.length} programmi)`);
-            this.emu.onMessage('SD creata e inserita');
+            this.emu.setSdImage(img, `Built SD (${this.pending.length} programs)`);
+            this.emu.onMessage('SD card built and inserted');
           } catch (e) {
             this.emu.onMessage(String((e as Error).message), 'error');
           }
         },
-      }, 'Crea e inserisci'),
-      h('button', { type: 'button', onclick: () => { this.pending = []; this.renderBuilder(); } }, 'Svuota')));
+      }, 'Build and insert'),
+      h('button', { type: 'button', onclick: () => { this.pending = []; this.renderBuilder(); } }, 'Clear')));
   }
 
   update(): void {
-    this.romInfo.textContent = this.emu.romName || 'nessuna ROM';
+    this.romInfo.textContent = this.emu.romName || 'no ROM';
     const sd = this.emu.sdImage;
-    this.sdInfo.textContent = sd ? `${this.emu.sdName} · ${(sd.length / 1024).toFixed(0)} KB` : 'nessuna scheda inserita';
+    this.sdInfo.textContent = sd ? `${this.emu.sdName} · ${(sd.length / 1024).toFixed(0)} KB` : 'no card inserted';
     this.sdList.replaceChildren(...(sd ? readSdDirectory(sd) : []).map(p =>
       h('li', {}, `${p.name} `, h('span', { class: 'dim' }, `$${hex(p.load, 4)} · ${p.length} B${p.run ? ' · RUN' : ''}`))));
   }

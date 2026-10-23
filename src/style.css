@@ -6,8 +6,8 @@
   --line: #2e3842;
   --text: #d9e0e7;
   --dim: #8a96a3;
-  --accent: #f2a93b;       /* ambra: LED, selezione */
-  --accent-2: #3fbf8a;     /* verde PCB: acceso, ok */
+  --accent: #f2a93b;       /* amber: LEDs, selection */
+  --accent-2: #3fbf8a;     /* PCB green: on, ok */
   --danger: #e5534b;
   --key: #2a323c;
   --key-top: #343e4a;
@@ -53,7 +53,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 input[type=range] { accent-color: var(--accent); width: 100%; }
 [hidden] { display: none !important; }
 
-/* ---------------- barra superiore ---------------- */
+/* ---------------- top bar ---------------- */
 .topbar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
   padding: 10px 16px;
@@ -93,7 +93,7 @@ button.icon { padding: 6px 10px; }
 }
 .stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
-/* ---------------- schermo ---------------- */
+/* ---------------- screen ---------------- */
 .monitor {
   background: #0a0c0f;
   border: 1px solid var(--line);
@@ -126,9 +126,9 @@ button.icon { padding: 6px 10px; }
 .deck-toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .deck-item { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
 .deck-item.absent { opacity: .4; pointer-events: none; }
-.deck-item.absent::before { content: 'Scheda non inserita'; display: block; color: var(--dim); font-size: 12px; margin-bottom: 6px; }
+.deck-item.absent::before { content: 'Board not plugged in'; display: block; color: var(--dim); font-size: 12px; margin-bottom: 6px; }
 
-/* ---------------- tastiera virtuale ---------------- */
+/* ---------------- virtual keyboard ---------------- */
 .vkeyboard { display: flex; flex-direction: column; gap: 5px; user-select: none; touch-action: none; overflow-x: auto; }
 .vk-row { display: flex; gap: 5px; min-width: 620px; }
 .vk-key {
@@ -173,7 +173,7 @@ button.icon { padding: 6px 10px; }
 .joy-btn:hover:not(:disabled) { background: radial-gradient(circle at 35% 30%, #e05f5b, #962a26); border-color: #4a1513; }
 .joy-btn.on { background: radial-gradient(circle at 35% 30%, #ffd27a, var(--accent)); color: #1b1408; border-color: #7a5212; transform: scale(.96); }
 
-/* ---------------- pannelli ---------------- */
+/* ---------------- panels ---------------- */
 .side { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; align-self: start; }
 .tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--line); background: var(--bg-2); }
 .tabs button { border: 0; border-radius: 0; background: transparent; padding: 10px 12px; color: var(--dim); border-bottom: 2px solid transparent; white-space: nowrap; }
@@ -192,7 +192,7 @@ button.icon { padding: 6px 10px; }
 .dim { color: var(--dim); }
 .mono { font-family: var(--mono); font-size: 12px; margin: 0; white-space: pre; overflow-x: auto; background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
 
-/* giochi */
+/* games */
 .games { display: grid; gap: 6px; }
 .game { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; text-align: left; padding: 9px 12px; }
 .game-n { font-family: var(--mono); color: var(--accent); }
@@ -258,7 +258,7 @@ button.icon { padding: 6px 10px; }
 .ay-regs { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; font-family: var(--mono); font-size: 11px; color: var(--dim); }
 .ay-regs span { text-align: center; background: #0d1014; border-radius: 3px; padding: 1px 0; }
 
-/* terminale */
+/* terminal */
 .terminal { background: #050806; border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
 .terminal-screen {
   margin: 0; padding: 8px; min-width: 80ch; font-family: var(--mono); font-size: 11.5px; line-height: 1.25;
@@ -271,7 +271,7 @@ button.icon { padding: 6px 10px; }
 .bp-list { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .bp { font-family: var(--mono); }
 
-/* messaggi */
+/* messages */
 .toast {
   position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 20px);
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
@@ -289,7 +289,7 @@ button.icon { padding: 6px 10px; }
   .dpad-wrap { width: 104px; }
 }
 
-/* ---------------- display delle schede (Big LCD, LCD 16x2, LED) ---------------- */
+/* ---------------- board displays (Big LCD, LCD 16x2, LEDs) ---------------- */
 .displays { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 .display-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
 .display-title { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
@@ -305,5 +305,5 @@ button.icon { padding: 6px 10px; }
 }
 .led-bank .led.on { background: radial-gradient(circle at 35% 30%, #ffb3ac, #f0453b); box-shadow: 0 0 10px #f0453b; }
 
-/* terminale con l'impaginazione del CRT: 40 colonne, caratteri piu' grandi */
+/* terminal with the CRT layout: 40 columns, larger characters */
 .terminal.crt .terminal-screen { min-width: 40ch; font-size: 14px; line-height: 1.3; }

@@ -1,4 +1,4 @@
-// Display delle schede di uscita: Big LCD T6963, LCD 16x2 HD44780, 16 LED
+// Displays of the output boards: Big LCD T6963, LCD 16x2 HD44780, 16 LEDs
 
 import { Machine } from '../core/Machine';
 import { BigLcdBoard, LcdBoard, LedBoard } from '../boards/DisplayBoards';
@@ -6,7 +6,7 @@ import { T6963_H, T6963_W } from '../devices/T6963';
 import { glyph } from '../devices/font5x8';
 import { h } from './dom';
 
-// DS-G160128STBWW: STN blu, retroilluminazione bianca
+// DS-G160128STBWW: blue STN, white backlight
 const BIG_ON = [236, 244, 255];
 const BIG_OFF = [30, 52, 196];
 
@@ -35,7 +35,7 @@ class BigLcdView {
   }
 }
 
-// LCD 16x2: celle 5x8 punti con spazi, come il display reale
+// LCD 16x2: 5x8 dot cells with gaps, like the real display
 const DOT = 3, GAP = 1, CELL_W = 5 * (DOT + GAP) + 2, CELL_H = 8 * (DOT + GAP) + 3;
 const LCD_W = 16 * CELL_W + 8, LCD_H = 2 * CELL_H + 8;
 
@@ -107,7 +107,7 @@ export class Displays {
   private lcd = new CharLcdView();
   private leds = new LedView();
 
-  /** mostra solo i display delle schede inserite */
+  /** shows only the displays of the plugged-in boards */
   bind(m: Machine): void {
     const parts: HTMLElement[] = [];
     if (m.board('biglcd')) parts.push(this.big.el);

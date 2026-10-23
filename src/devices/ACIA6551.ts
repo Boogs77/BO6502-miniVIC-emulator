@@ -1,16 +1,16 @@
-// W65C51 ACIA - porta seriale
+// W65C51 ACIA - serial port
 //
-//   $0 dati (lettura: byte ricevuto, scrittura: byte da trasmettere)
-//   $1 stato (bit 3 RDRF, bit 4 TDRE, bit 7 IRQ) / scrittura = reset software
-//   $2 comando, $3 controllo
-// La trasmissione e' istantanea (TDRE sempre a 1, come il W65C51 reale che non
-// segnala la fine della trasmissione): il BIOS usa un ciclo di attesa.
-// La ricezione ha una coda: un byte alla volta in RDR, il successivo dopo la lettura.
+//   $0 data (read: received byte, write: byte to transmit)
+//   $1 status (bit 3 RDRF, bit 4 TDRE, bit 7 IRQ) / write = software reset
+//   $2 command, $3 control
+// Transmission is instantaneous (TDRE always 1, like the real W65C51, which does not
+// signal the end of transmission): the BIOS uses a delay loop.
+// Reception has a queue: one byte at a time in RDR, the next one after it is read.
 
 export class ACIA6551 {
   command = 0;
   control = 0;
-  /** byte trasmesso dalla CPU */
+  /** byte transmitted by the CPU */
   onTransmit: (byte: number) => void = () => {};
   onIrq: (active: boolean) => void = () => {};
 
@@ -29,7 +29,7 @@ export class ACIA6551 {
     this.updateIrq();
   }
 
-  /** byte in arrivo dal terminale */
+  /** byte arriving from the terminal */
   receive(byte: number): void {
     this.rxQueue.push(byte & 0xFF);
     this.fillRdr();
@@ -83,14 +83,14 @@ export class ACIA6551 {
   write(reg: number, v: number): void {
     switch (reg & 3) {
       case 0: this.onTransmit(v); break;
-      case 1: this.command &= 0xE0; this.overrun = false; this.updateIrq(); break; // reset software
+      case 1: this.command &= 0xE0; this.overrun = false; this.updateIrq(); break; // software reset
       case 2: this.command = v; this.updateIrq(); break;
       default: this.control = v; break;
     }
   }
 
   private updateIrq(): void {
-    // IRQ in ricezione se DTR attivo (bit 0) e interrupt RX abilitato (bit 1 = 0)
+    // receive IRQ if DTR is active (bit 0) and the RX interrupt is enabled (bit 1 = 0)
     const on = (this.command & 0x01) !== 0 && (this.command & 0x02) === 0 && this.rdrFull;
     if (on !== this.irqLine) {
       this.irqLine = on;

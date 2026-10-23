@@ -1,4 +1,4 @@
-// La seriale con l'impaginazione 'crt' deve mostrare la stessa pagina del VDU (driver print_crt_ch del BIOS)
+// With the 'crt' layout the serial port must show the same page as the VDU (BIOS print_crt_ch driver)
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildMachine, defaultConfig } from '../src/machines/profiles';
@@ -18,21 +18,21 @@ export default async function () {
     if (crt !== ser) {
       const a = crt.split('\n'), b = ser.split('\n');
       const i = a.findIndex((l, k) => l !== b[k]);
-      // CHROUT scrive prima sul CRT e poi sull'ACIA: il CRT puo' essere avanti di un carattere
+      // CHROUT writes to the CRT first and then to the ACIA: the CRT can be one character ahead
       const diff = a.filter((l, k) => l !== b[k]).length;
-      // (le righe sono senza spazi finali: il carattere in piu' puo' seguire spazi gia' trasmessi)
+      // (lines have no trailing spaces: the extra character may follow spaces already sent)
       if (diff === 1 && a[i].startsWith(b[i]) && a[i].slice(b[i].length).trim().length === 1) return;
-      throw new Error(`${what}: riga ${i} diversa\n  CRT     "${a[i]}"\n  seriale "${b[i]}"`);
+      throw new Error(`${what}: line ${i} differs\n  CRT    "${a[i]}"\n  serial "${b[i]}"`);
     }
   };
-  check('menu di avvio');
-  // pagina delle informazioni: CRT e seriale devono coincidere in ogni momento della stampa
+  check('boot menu');
+  // information page: CRT and serial must match at every moment while it is printed
   tap(m, 'Digit4', 2);
   let seen = false;
   for (let f = 0; f < 240; f += 5) {
     runFrames(m, 5);
-    check(`informazioni di sistema, frame ${f}`);
+    check(`system information, frame ${f}`);
     if (term.text().includes('CPU : W65C02S')) seen = true;
   }
-  assert(seen, 'la pagina delle informazioni non e’ mai comparsa');
+  assert(seen, 'the information page never appeared');
 }

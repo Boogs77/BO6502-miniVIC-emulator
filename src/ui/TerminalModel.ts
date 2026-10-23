@@ -1,13 +1,13 @@
-// Terminale seriale
+// Serial terminal
 //
-// Due impaginazioni:
-//  'crt'  come il driver CRT del BIOS (print_crt_ch in crt_text_drv.s), cosi' la seriale mostra
-//         la stessa pagina del VDU: 40x24, LF = a capo, CR ignorato, a capo automatico a 40
-//         colonne, dopo la riga 24 si riparte dalla riga 0 con lo schermo pulito (niente
-//         scorrimento), ESC (con la sua sequenza ANSI) = pulisci e torna in alto
-//  'ansi' terminale VT100 80x24: CR, LF, BS, TAB, FF, ESC[nJ, ESC[H / ESC[r;cH, ESC[K,
-//         ESC[nA/B/C/D, ESC[...m (ignorata), con scorrimento
-// Questo e' il modello (senza DOM); la vista e' in Terminal.ts.
+// Two layouts:
+//  'crt'  like the BIOS CRT driver (print_crt_ch in crt_text_drv.s), so the serial port shows
+//         the same page as the VDU: 40x24, LF = new line, CR ignored, automatic wrap at 40
+//         columns, after row 24 it restarts from row 0 with a cleared screen (no
+//         scrolling), ESC (with its ANSI sequence) = clear and go home
+//  'ansi' VT100 80x24 terminal: CR, LF, BS, TAB, FF, ESC[nJ, ESC[H / ESC[r;cH, ESC[K,
+//         ESC[nA/B/C/D, ESC[...m (ignored), with scrolling
+// This is the model (no DOM); the view is in Terminal.ts.
 
 export type TerminalMode = 'crt' | 'ansi';
 
@@ -20,7 +20,7 @@ export class TerminalModel {
   private esc = 0;
   private params = '';
   private mode: TerminalMode = 'crt';
-  /** true se il contenuto e' cambiato dall'ultimo render */
+  /** true if the content changed since the last render */
   dirty = true;
 
   constructor() {
@@ -47,7 +47,7 @@ export class TerminalModel {
     this.dirty = true;
   }
 
-  /** byte trasmesso dalla CPU */
+  /** byte transmitted by the CPU */
   write(byte: number): void {
     const c = byte & 0x7F;
     if (this.esc === 1) {
@@ -75,7 +75,7 @@ export class TerminalModel {
     this.dirty = true;
   }
 
-  // ---------------- impaginazione del CRT ----------------
+  // ---------------- CRT layout ----------------
   private crtClear(): void {
     for (const r of this.grid) r.fill(' ');
     this.row = this.col = 0;
@@ -84,18 +84,18 @@ export class TerminalModel {
 
   private crtNewLine(): void {
     this.col = 0;
-    if (++this.row >= ROWS) this.crtClear(); // niente scorrimento: si riparte dalla riga 0
+    if (++this.row >= ROWS) this.crtClear(); // no scrolling: restart from row 0
   }
 
   private crtChar(c: number): void {
     if (c === 0x0A) { this.crtNewLine(); return; }
     if (c === 0x0D) return;
-    // gli altri codici di controllo il CRT li stampa come caratteri grafici: qui uno spazio
+    // the CRT prints the other control codes as graphic characters: here a space
     this.grid[this.row][this.col] = c >= 0x20 ? String.fromCharCode(c) : ' ';
     if (++this.col >= 40) this.crtNewLine();
   }
 
-  // ---------------- terminale ANSI ----------------
+  // ---------------- ANSI terminal ----------------
   private ansiChar(c: number): void {
     const cols = this.cols;
     switch (c) {
@@ -144,7 +144,7 @@ export class TerminalModel {
     this.dirty = true;
   }
 
-  /** righe da mostrare, con il cursore */
+  /** lines to show, with the cursor */
   lines(): string[] {
     const cols = this.cols;
     return this.grid.map((r, i) => {
@@ -155,7 +155,7 @@ export class TerminalModel {
     });
   }
 
-  /** testo dello schermo (per i test) */
+  /** screen text (for the tests) */
   text(): string {
     return this.grid.map(r => r.join('').trimEnd()).join('\n');
   }

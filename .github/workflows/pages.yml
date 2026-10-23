@@ -1,11 +1,11 @@
-# Build e pubblicazione su GitHub Pages a ogni push su main
+# Build and publish on GitHub Pages on every push to main
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-  workflow_call:       # richiamato da sync-games.yml dopo l'aggiunta di giochi
+  workflow_call:       # called by sync-games.yml after games are added
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main    # anche quando e' richiamato: prende il commit appena fatto dalla sincronizzazione
+          ref: main    # also when called: takes the commit just made by the sync
       - uses: actions/setup-node@v4
         with:
           node-version: 22

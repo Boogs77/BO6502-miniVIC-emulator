@@ -1,4 +1,4 @@
-// Piccolo helper per creare elementi DOM
+// Small helper to create DOM elements
 
 type Attrs = Record<string, string | number | boolean | EventListener | undefined>;
 
@@ -37,7 +37,7 @@ export function parseHex(s: string): number | null {
   return parseInt(t, 16);
 }
 
-/** apre la finestra di scelta file e restituisce il file scelto */
+/** opens the file picker and returns the chosen files */
 export function pickFile(accept: string, multiple = false): Promise<File[]> {
   return new Promise(resolve => {
     const input = h('input', { type: 'file', accept, multiple });

@@ -1,4 +1,4 @@
-// Schermo del VDU: converte gli indici di colore del TMS9918A in pixel sul canvas
+// VDU screen: converts the TMS9918A colour indices into canvas pixels
 
 import { SCREEN_H, SCREEN_W, TMS_PALETTE } from '../devices/TMS9918A';
 import { Machine } from '../core/Machine';
@@ -13,8 +13,8 @@ export class Screen {
   private noSignal: HTMLElement;
 
   constructor() {
-    this.canvas = h('canvas', { width: SCREEN_W, height: SCREEN_H, class: 'screen-canvas', tabindex: 0, 'aria-label': 'Schermo del VDU' });
-    this.noSignal = h('div', { class: 'no-signal' }, 'NESSUN SEGNALE');
+    this.canvas = h('canvas', { width: SCREEN_W, height: SCREEN_H, class: 'screen-canvas', tabindex: 0, 'aria-label': 'VDU screen' });
+    this.noSignal = h('div', { class: 'no-signal' }, 'NO SIGNAL');
     this.el = h('div', { class: 'screen-wrap' }, this.canvas, this.noSignal);
     this.ctx = this.canvas.getContext('2d')!;
     this.image = this.ctx.createImageData(SCREEN_W, SCREEN_H);

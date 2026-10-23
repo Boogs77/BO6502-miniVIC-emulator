@@ -1,5 +1,5 @@
-// Terminale seriale: vista del TerminalModel (impaginazione 'crt' come il VDU, oppure 'ansi' 80x24).
-// Si scrive cliccando sul terminale: i tasti vanno alla ricezione della W65C51.
+// Serial terminal: view of the TerminalModel ('crt' layout like the VDU, or 'ansi' 80x24).
+// Click the terminal to type: keys go to the W65C51 receiver.
 
 import { h } from './dom';
 import { TerminalModel, TerminalMode } from './TerminalModel';
@@ -10,11 +10,11 @@ export class Terminal {
   readonly el: HTMLElement;
   readonly model = new TerminalModel();
   private screen: HTMLPreElement;
-  /** byte digitato dall'utente */
+  /** byte typed by the user */
   onInput: (byte: number) => void = () => {};
 
   constructor() {
-    this.screen = h('pre', { class: 'terminal-screen', tabindex: 0, 'aria-label': 'Terminale seriale' });
+    this.screen = h('pre', { class: 'terminal-screen', tabindex: 0, 'aria-label': 'Serial terminal' });
     this.el = h('div', { class: 'terminal crt' }, this.screen);
     this.screen.addEventListener('keydown', e => this.key(e));
     this.render();
@@ -50,7 +50,7 @@ export class Terminal {
     }
   }
 
-  /** aggiorna il testo (chiamata una volta per frame) */
+  /** refreshes the text (called once per frame) */
   render(): void {
     if (!this.model.dirty) return;
     this.model.dirty = false;

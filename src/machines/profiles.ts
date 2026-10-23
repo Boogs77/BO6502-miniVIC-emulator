@@ -1,9 +1,9 @@
-// Profili delle macchine emulate
+// Profiles of the emulated machines
 //
-// BO6502: computer modulare, ogni scheda si inserisce o si toglie dal rack e il suo
-//         indirizzo si puo' cambiare (come i jumper reali). Il VDP interrompe su IRQ.
-// miniVIC: stessa architettura in formato compatto, configurazione fissa.
-//          Audio a $D38x, joystick a $D58x, SD a $DD8x, VDP su NMI.
+// BO6502: modular computer, every board can be plugged into or removed from the rack and
+//         its address can be changed (like the real jumpers). The VDP interrupts on IRQ.
+// miniVIC: same architecture in a compact form, fixed configuration.
+//          Audio at $D38x, joystick at $D58x, SD at $DD8x, VDP on NMI.
 
 import { Machine } from '../core/Machine';
 import { BoardType, IrqLine } from '../core/Board';
@@ -19,7 +19,7 @@ export interface BoardConfig {
   enabled: boolean;
   base: number;
   irq: IrqLine;
-  /** opzione specifica della scheda (LCD: cablaggio '4bit' / '8bit') */
+  /** board-specific option (LCD: '4bit' / '8bit' wiring) */
   option?: string;
 }
 
@@ -35,11 +35,11 @@ export interface BoardInfo {
   type: BoardType;
   name: string;
   chips: string;
-  /** passo con cui si puo' spostare l'indirizzo */
+  /** step by which the address can be moved */
   step: number;
-  /** ampiezza dello spazio decodificato */
+  /** size of the decoded space */
   size: number;
-  /** la scheda ha una linea di interrupt configurabile */
+  /** the board has a configurable interrupt line */
   hasIrq: boolean;
 }
 
@@ -51,11 +51,11 @@ export const BOARD_INFO: Record<BoardType, BoardInfo> = {
   sdcard: { type: 'sdcard', name: 'SD Card', chips: 'W65C22 SPI bit-bang', step: 0x10, size: 0x10, hasIrq: true },
   audio: { type: 'audio', name: 'Audio', chips: '2x AY-3-8910 + 2x LM386 (stereo)', step: 0x10, size: 0x10, hasIrq: false },
   biglcd: { type: 'biglcd', name: 'Big LCD', chips: 'W65C22 + T6963C, DS-G160128 160x128', step: 0x10, size: 0x10, hasIrq: true },
-  lcd: { type: 'lcd', name: 'LCD legacy', chips: 'W65C22 + HD44780U 16x2 (decodifica $Dxxx)', step: 0x1000, size: 0x1000, hasIrq: true },
-  leds: { type: 'leds', name: 'LED test', chips: 'W65C22 + 16 LED (decodifica $Dxxx)', step: 0x1000, size: 0x1000, hasIrq: true },
+  lcd: { type: 'lcd', name: 'LCD legacy', chips: 'W65C22 + HD44780U 16x2 (decodes $Dxxx)', step: 0x1000, size: 0x1000, hasIrq: true },
+  leds: { type: 'leds', name: 'LED test', chips: 'W65C22 + 16 LEDs (decodes $Dxxx)', step: 0x1000, size: 0x1000, hasIrq: true },
 };
 
-/** schede presenti nel rack del BO6502 (anche spente), nell'ordine di priorita' sul bus */
+/** boards in the BO6502 rack (also unplugged ones), in bus priority order */
 export const BO6502_BOARD_ORDER: BoardType[] = ['vdu', 'serial', 'keyboard', 'biglcd', 'joystick', 'sdcard', 'audio', 'lcd', 'leds'];
 
 export const MACHINE_NAMES: Record<MachineId, string> = {
@@ -87,14 +87,14 @@ export function defaultConfig(id: MachineId): MachineConfig {
       { type: 'joystick', enabled: true, base: 0xD1A0, irq: 'irq' },
       { type: 'sdcard', enabled: true, base: 0xD1B0, irq: 'irq' },
       { type: 'audio', enabled: true, base: 0xD1C0, irq: 'none' },
-      // decodificano tutta la pagina $Dxxx: spente, altrimenti coprono le altre schede
+      // they decode the whole $Dxxx page: off, otherwise they shadow the other boards
       { type: 'lcd', enabled: false, base: 0xD000, irq: 'irq', option: '4bit' },
       { type: 'leds', enabled: false, base: 0xD000, irq: 'irq' },
     ],
   };
 }
 
-/** aggiunge a una configurazione salvata le schede introdotte dopo */
+/** adds the boards introduced later to a saved configuration */
 export function upgradeConfig(cfg: MachineConfig): MachineConfig {
   if (cfg.id !== 'bo6502') return cfg;
   const def = defaultConfig('bo6502');
@@ -104,18 +104,18 @@ export function upgradeConfig(cfg: MachineConfig): MachineConfig {
   return { ...cfg, boards };
 }
 
-/** il miniVIC ha la configurazione fissa */
+/** the miniVIC has a fixed configuration */
 export function isConfigurable(id: MachineId): boolean {
   return id === 'bo6502';
 }
 
-/** clock selezionabili sulla scheda RESET del BO6502 */
+/** clocks selectable on the BO6502 RESET board */
 export const BO6502_CLOCKS = [500_000, 1_000_000, 2_000_000];
 
 export function buildMachine(cfg: MachineConfig): Machine {
   const m = new Machine({
     cpuHz: cfg.cpuHz,
-    // ROM multi con J-CS3/4/5 su VCC: niente ROM nelle pagine di I/O $B000-$DFFF
+    // multi ROM with J-CS3/4/5 on VCC: no ROM in the I/O pages $B000-$DFFF
     romHoles: [[0xB000, 0xDFFF]],
   });
   m.ramEnabled = cfg.ram;

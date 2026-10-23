@@ -1,19 +1,19 @@
-// HD44780U - controller LCD a caratteri (16x2)
+// HD44780U - character LCD controller (16x2)
 //
-//   bus     8 bit, oppure 4 bit (DB4-DB7, prima il nibble alto) dopo un Function Set con DL = 0
-//   latch   sul fronte di discesa di E; con RW = 1 i dati escono mentre E e' alto
-//   RS = 0  istruzioni / lettura busy flag + contatore indirizzi (BF sempre 0: nessuna attesa)
-//   RS = 1  dati in DDRAM o CGRAM
-//   DDRAM   80 byte: riga 1 $00-$27, riga 2 $40-$67; il display mostra 16 colonne dallo scorrimento
-//   CGRAM   8 caratteri personalizzati 5x8 (codici 0-7 e 8-15)
-// All'accensione l'interfaccia e' a 8 bit, come sul chip reale.
+//   bus     8 bit, or 4 bit (DB4-DB7, high nibble first) after a Function Set with DL = 0
+//   latch   on the falling edge of E; with RW = 1 the data is driven while E is high
+//   RS = 0  instructions / read busy flag + address counter (BF always 0: no waiting)
+//   RS = 1  data in DDRAM or CGRAM
+//   DDRAM   80 bytes: line 1 $00-$27, line 2 $40-$67; the display shows 16 columns from the shift
+//   CGRAM   8 custom 5x8 characters (codes 0-7 and 8-15)
+// At power-on the interface is 8 bit, like on the real chip.
 
 export class HD44780 {
   readonly ddram = new Uint8Array(0x80).fill(0x20);
   readonly cgram = new Uint8Array(64);
-  /** contatore indirizzi */
+  /** address counter */
   ac = 0;
-  /** true = l'ultimo indirizzo impostato era in CGRAM */
+  /** true = the last address set was in CGRAM */
   cgMode = false;
   displayOn = false;
   cursorOn = false;
@@ -21,12 +21,12 @@ export class HD44780 {
   twoLines = false;
   increment = true;
   shiftDisplay = false;
-  /** scorrimento del display (colonne) */
+  /** display shift (columns) */
   shift = 0;
   eightBit = true;
 
   private e = 0;
-  private nibbleHigh = true;   // in 4 bit: il prossimo nibble e' quello alto
+  private nibbleHigh = true;   // in 4-bit mode: the next nibble is the high one
   private latchedHigh = 0;
   private readNibbleHigh = true;
 
@@ -46,8 +46,8 @@ export class HD44780 {
   }
 
   /**
-   * aggiorna i pin; data = DB0-DB7 (in 4 bit conta solo DB4-DB7).
-   * Ritorna il valore che il display mette sul bus (DB0-DB7) o -1 se non lo pilota.
+   * updates the pins; data = DB0-DB7 (in 4-bit mode only DB4-DB7 matter).
+   * Returns the value the display drives on the bus (DB0-DB7) or -1 if it does not drive it.
    */
   pins(rs: number, rw: number, e: number, data: number): number {
     e = e ? 1 : 0;
@@ -55,7 +55,7 @@ export class HD44780 {
     const rising = this.e === 0 && e === 1;
     this.e = e;
     if (rw) {
-      // lettura: il display pilota il bus mentre E e' alto
+      // read: the display drives the bus while E is high
       if (!e) {
         if (falling) {
           if (this.eightBit) {
@@ -73,7 +73,7 @@ export class HD44780 {
       if (this.eightBit) return v;
       return this.readNibbleHigh ? v & 0xF0 : (v << 4) & 0xF0;
     }
-    if (rising) this.readNibbleHigh = true; // una scrittura riallinea la sequenza di lettura
+    if (rising) this.readNibbleHigh = true; // a write realigns the read sequence
     if (!falling) return -1;
     if (this.eightBit) {
       this.write(rs, data & 0xFF);
@@ -98,7 +98,7 @@ export class HD44780 {
     }
     let a = this.ac + (this.increment ? 1 : -1);
     if (this.twoLines) {
-      // salti tra le due righe: $27 -> $40, $67 -> $00 (e all'indietro)
+      // jumps between the two lines: $27 -> $40, $67 -> $00 (and backwards)
       if (a === 0x28) a = 0x40;
       else if (a === 0x68) a = 0x00;
       else if (a === 0x3F) a = 0x27;
@@ -162,14 +162,14 @@ export class HD44780 {
     this.increment = inc;
   }
 
-  /** codice del carattere visibile alla riga r (0-1), colonna c (0-15) */
+  /** code of the character visible at row r (0-1), column c (0-15) */
   charAt(r: number, c: number): number {
     const width = this.twoLines ? 40 : 80;
     const col = (((c + this.shift) % width) + width) % width;
     return this.ddram[(r ? 0x40 : 0) + col];
   }
 
-  /** colonna del cursore visibile (o -1) */
+  /** visible cursor cell [row, column] (or null) */
   cursorCell(): [number, number] | null {
     if (this.cgMode) return null;
     const row = this.ac >= 0x40 ? 1 : 0;

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-// base relativa: la build funziona anche da GitHub Pages o da una cartella qualsiasi
+// relative base: the build also works from GitHub Pages or from any folder
 export default defineConfig({
   base: './',
 });

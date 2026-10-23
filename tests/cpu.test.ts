@@ -1,5 +1,5 @@
-// Suite di Klaus Dormann: 6502 funzionale e opcode estesi 65C02 (incluse le istruzioni Rockwell).
-// I binari (GPL) non sono nel repository: si scaricano in tests/fixtures/klaus al primo avvio.
+// Klaus Dormann suites: 6502 functional and 65C02 extended opcodes (Rockwell instructions included).
+// The (GPL) binaries are not in the repository: they are downloaded to tests/fixtures/klaus on first run.
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { W65C02 } from '../src/cpu/W65C02';
@@ -12,7 +12,7 @@ async function fixture(name: string): Promise<Uint8Array> {
   if (!existsSync(p)) {
     mkdirSync(DIR, { recursive: true });
     const r = await fetch(URL + name);
-    if (!r.ok) throw new Error(`download di ${name} fallito: ${r.status}`);
+    if (!r.ok) throw new Error(`download of ${name} failed: ${r.status}`);
     writeFileSync(p, new Uint8Array(await r.arrayBuffer()));
   }
   return new Uint8Array(readFileSync(p));
@@ -28,8 +28,8 @@ function run(image: Uint8Array, success: number, maxCycles: number): void {
     const pc = cpu.pc;
     cpu.step();
     if (cpu.pc === pc && pc === last) {
-      if (pc === success) { console.log(`      successo a $${pc.toString(16)} dopo ${cpu.cycles} cicli`); return; }
-      throw new Error(`trappola d'errore a $${pc.toString(16)} (cicli ${cpu.cycles})`);
+      if (pc === success) { console.log(`      success at $${pc.toString(16)} after ${cpu.cycles} cycles`); return; }
+      throw new Error(`error trap at $${pc.toString(16)} (cycles ${cpu.cycles})`);
     }
     last = pc;
   }

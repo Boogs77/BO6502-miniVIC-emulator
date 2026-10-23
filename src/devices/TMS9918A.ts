@@ -1,38 +1,38 @@
 // TMS9918A - Video Display Processor (NTSC)
 //
-// Rendering per riga di scansione, sincronizzato con la CPU dalla macchina:
-// cambi di registri o di VRAM a meta' schermo hanno effetto dalla riga successiva.
-//   modi    Graphics I, Graphics II, Multicolor, Text (+ combinazioni M3 non documentate)
-//   sprite  32 sprite, 8x8 / 16x16, ingranditi x2, limite di 4 per riga con flag 5S
-//           e numero del quinto sprite, collisione (anche con colore 0), early clock
-//   porte   latch a due scritture, buffer di read-ahead, prima scrittura che aggiorna
-//           subito il byte basso dell'indirizzo (come il chip reale)
-//   INT     flag F alla fine della riga 192, attivo se R1 bit 5; si azzera leggendo lo stato
+// Scanline rendering, kept in sync with the CPU by the machine:
+// register or VRAM changes in mid-screen take effect from the next line.
+//   modes    Graphics I, Graphics II, Multicolor, Text (+ undocumented M3 combinations)
+//   sprites  32 sprites, 8x8 / 16x16, magnified x2, 4 per line limit with the 5S flag
+//            and the fifth sprite number, collision (even with colour 0), early clock
+//   ports    two-write latch, read-ahead buffer, first write updating the address
+//            low byte immediately (like the real chip)
+//   INT      F flag at the end of line 192, active if R1 bit 5; cleared by reading the status
 
-/** palette TMS9918A (valori RGB misurati, come in MAME / openMSX) */
+/** TMS9918A palette (measured RGB values, as in MAME / openMSX) */
 export const TMS_PALETTE: readonly number[][] = [
-  [0, 0, 0],       // 0 trasparente
-  [0, 0, 0],       // 1 nero
-  [33, 200, 66],   // 2 verde medio
-  [94, 220, 120],  // 3 verde chiaro
-  [84, 85, 237],   // 4 blu scuro
-  [125, 118, 252], // 5 blu chiaro
-  [212, 82, 77],   // 6 rosso scuro
-  [66, 235, 245],  // 7 ciano
-  [252, 85, 84],   // 8 rosso medio
-  [255, 121, 120], // 9 rosso chiaro
-  [212, 193, 84],  // 10 giallo scuro
-  [230, 206, 128], // 11 giallo chiaro
-  [33, 176, 59],   // 12 verde scuro
+  [0, 0, 0],       // 0 transparent
+  [0, 0, 0],       // 1 black
+  [33, 200, 66],   // 2 medium green
+  [94, 220, 120],  // 3 light green
+  [84, 85, 237],   // 4 dark blue
+  [125, 118, 252], // 5 light blue
+  [212, 82, 77],   // 6 dark red
+  [66, 235, 245],  // 7 cyan
+  [252, 85, 84],   // 8 medium red
+  [255, 121, 120], // 9 light red
+  [212, 193, 84],  // 10 dark yellow
+  [230, 206, 128], // 11 light yellow
+  [33, 176, 59],   // 12 dark green
   [201, 91, 186],  // 13 magenta
-  [204, 204, 204], // 14 grigio
-  [255, 255, 255], // 15 bianco
+  [204, 204, 204], // 14 grey
+  [255, 255, 255], // 15 white
 ];
 
-export const TMS_LINES = 262;          // righe per frame NTSC
+export const TMS_LINES = 262;          // lines per NTSC frame
 export const TMS_ACTIVE_LINES = 192;
-export const BORDER_X = 16;            // bordo mostrato a sinistra e a destra
-export const BORDER_Y = 24;            // bordo mostrato sopra e sotto
+export const BORDER_X = 16;            // border shown on the left and right
+export const BORDER_Y = 24;            // border shown above and below
 export const SCREEN_W = 256 + BORDER_X * 2;
 export const SCREEN_H = 192 + BORDER_Y * 2;
 
@@ -41,9 +41,9 @@ export class TMS9918A {
   readonly reg = new Uint8Array(8);
   status = 0;
 
-  /** frame corrente in indici di colore (0-15), bordo compreso */
+  /** current frame as colour indices (0-15), border included */
   readonly frame = new Uint8Array(SCREEN_W * SCREEN_H);
-  /** chiamata quando cambia la linea INT (attiva = true) */
+  /** called when the INT line changes (active = true) */
   onInterrupt: (active: boolean) => void = () => {};
 
   private addr = 0;
@@ -52,7 +52,7 @@ export class TMS9918A {
   private buffer = 0;
   private intLine = false;
 
-  // pixel gia' occupati da uno sprite sulla riga (per le collisioni)
+  // pixels already taken by a sprite on the line (for collisions)
   private readonly spriteMask = new Uint8Array(256);
 
   reset(): void {
@@ -65,8 +65,8 @@ export class TMS9918A {
     this.updateInt();
   }
 
-  // ---------------- porte CPU ----------------
-  /** porta dati (MODE = 0) */
+  // ---------------- CPU ports ----------------
+  /** data port (MODE = 0) */
   readData(): number {
     this.latch = false;
     const v = this.buffer;
@@ -82,16 +82,16 @@ export class TMS9918A {
     this.addr = (this.addr + 1) & 0x3FFF;
   }
 
-  /** porta di controllo (MODE = 1): lettura dello stato */
+  /** control port (MODE = 1): status read */
   readStatus(): number {
     const v = this.status;
-    this.status &= 0x1F;     // azzera F, 5S e C
+    this.status &= 0x1F;     // clears F, 5S and C
     this.latch = false;
     this.updateInt();
     return v;
   }
 
-  /** valore dello stato senza effetti collaterali (debugger) */
+  /** status value without side effects (debugger) */
   peekStatus(): number {
     return this.status;
   }
@@ -110,7 +110,7 @@ export class TMS9918A {
     }
     this.addr = ((v & 0x3F) << 8) | this.first;
     if (!(v & 0x40)) {
-      // impostazione per lettura: read-ahead
+      // setup for reading: read-ahead
       this.buffer = this.vram[this.addr];
       this.addr = (this.addr + 1) & 0x3FFF;
     }
@@ -137,10 +137,10 @@ export class TMS9918A {
     return this.intLine;
   }
 
-  // ---------------- temporizzazione ----------------
+  // ---------------- timing ----------------
   /**
-   * Chiamata dalla macchina alla fine di ogni riga di scansione (0..261).
-   * Le righe 0-191 sono l'area attiva; alla fine della 191 parte il vblank.
+   * Called by the machine at the end of every scanline (0..261).
+   * Lines 0-191 are the active area; vblank starts at the end of line 191.
    */
   endOfLine(line: number): void {
     if (line < TMS_ACTIVE_LINES) {
@@ -150,7 +150,7 @@ export class TMS9918A {
         this.updateInt();
       }
     } else {
-      // bordo inferiore e superiore visibili
+      // visible bottom and top border
       const y = line < TMS_ACTIVE_LINES + BORDER_Y
         ? line + BORDER_Y
         : line >= TMS_LINES - BORDER_Y ? line - (TMS_LINES - BORDER_Y) : -1;
@@ -174,7 +174,7 @@ export class TMS9918A {
     out.fill(backdrop, row0 + BORDER_X + 256, row0 + SCREEN_W);
     const o = row0 + BORDER_X;
 
-    if (!(r[1] & 0x40)) {           // schermo spento (BLANK)
+    if (!(r[1] & 0x40)) {           // screen blanked (BLANK)
       out.fill(backdrop, o, o + 256);
       return;
     }
@@ -183,11 +183,11 @@ export class TMS9918A {
     const nt = (r[2] & 0x0F) << 10;
     const row = y >> 3;
     const line = y & 7;
-    const third = (row >> 3) << 8;  // per i modi con M3 (tabelle divise in 3 terzi)
+    const third = (row >> 3) << 8;  // for the M3 modes (tables split into 3 thirds)
     const m3 = (mode & 4) !== 0;
 
     if (mode & 1) {
-      // ---------- TEXT (M1): 40 colonne da 6 pixel, bordo di 8 pixel ----------
+      // ---------- TEXT (M1): 40 columns of 6 pixels, 8-pixel border ----------
       const fg = (r[7] >> 4) || backdrop;
       const bg = backdrop;
       const pgBase = m3 ? (r[4] & 0x04) << 11 : (r[4] & 0x07) << 11;
@@ -201,11 +201,11 @@ export class TMS9918A {
         const p = o + 8 + col * 6;
         for (let b = 0; b < 6; b++) out[p + b] = (pat & (0x80 >> b)) ? fg : bg;
       }
-      return; // niente sprite in modo testo
+      return; // no sprites in text mode
     }
 
     if (mode & 2) {
-      // ---------- MULTICOLOR (M2): blocchi 4x4 ----------
+      // ---------- MULTICOLOR (M2): 4x4 blocks ----------
       const pgBase = (r[4] & 0x07) << 11;
       for (let col = 0; col < 32; col++) {
         const name = vr[nt + row * 32 + col];
@@ -269,12 +269,12 @@ export class TMS9918A {
     for (; s < 32; s++) {
       const a = sat + s * 4;
       let sy = vr[a];
-      if (sy === 0xD0) break;               // fine della lista
-      if (sy > 0xE0) sy -= 256;             // sprite parzialmente sopra lo schermo
+      if (sy === 0xD0) break;               // end of the list
+      if (sy > 0xE0) sy -= 256;             // sprite partly above the screen
       const top = sy + 1;
       if (y < top || y >= top + size) continue;
       if (++count > 4) {
-        // quinto sprite sulla riga: non viene disegnato
+        // fifth sprite on the line: not drawn
         if (!(this.status & 0x40)) this.status = (this.status & 0xA0) | 0x40 | s;
         break;
       }
@@ -294,7 +294,7 @@ export class TMS9918A {
           const x = sx + (mag ? px * 2 + m : px);
           if (x < 0 || x > 255) continue;
           if (mask[x]) {
-            this.status |= 0x20;            // collisione
+            this.status |= 0x20;            // collision
             continue;
           }
           mask[x] = 1;
@@ -302,7 +302,7 @@ export class TMS9918A {
         }
       }
     }
-    // se non c'e' stato un quinto sprite, i 5 bit bassi contengono l'ultimo sprite esaminato
+    // if there was no fifth sprite, the low 5 bits hold the last sprite examined
     if (!(this.status & 0x40)) this.status = (this.status & 0xE0) | Math.min(s, 31);
   }
 }
