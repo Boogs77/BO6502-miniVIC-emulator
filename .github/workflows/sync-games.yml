@@ -37,7 +37,7 @@ jobs:
         run: |
           node scripts/sync-games.mjs --github --json | tee sync.json
           echo "changed=$(node -p "require('./sync.json').changed")" >> "$GITHUB_OUTPUT"
-          node scripts/sync-games.mjs --check   # dopo la sincronizzazione deve risultare allineato
+          node scripts/sync-games.mjs --github --check   # dopo la sincronizzazione deve risultare allineato
           rm sync.json
 
       - name: Check that every game reaches its title screen
