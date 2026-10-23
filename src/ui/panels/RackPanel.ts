@@ -81,6 +81,11 @@ export class RackPanel {
         on => emu.updateConfig(c => { c.boards[i].enabled = on; }), extra));
     });
 
+    const ramInit = h('select', { 'aria-label': 'RAM all’accensione' },
+      h('option', { value: 'zero', selected: !emu.settings.randomRam }, 'azzerata'),
+      h('option', { value: 'random', selected: emu.settings.randomRam }, 'casuale (come le SRAM reali)'));
+    ramInit.addEventListener('change', () => { emu.settings.randomRam = ramInit.value === 'random'; emu.save(); });
+
     this.el.replaceChildren(
       h('p', { class: 'hint' }, fixed
         ? 'Il miniVIC ha una configurazione fissa. Passa al BO6502 per cambiare le schede del rack.'
@@ -88,6 +93,8 @@ export class RackPanel {
           ? 'Spegni la macchina per inserire o togliere schede e cambiare gli indirizzi.'
           : 'Backplane a 39 pin: inserisci le schede e imposta gli indirizzi come con i jumper reali.'),
       h('div', { class: 'rack' }, ...slots),
+      h('div', { class: 'row' }, h('label', {}, 'RAM all’accensione ', ramInit)),
+      h('p', { class: 'hint' }, 'Con la RAM casuale si scoprono le variabili lette prima di essere inizializzate (vale dalla prossima accensione).'),
       editable ? h('div', { class: 'row' }, h('button', { type: 'button', onclick: () => emu.resetConfig() }, 'Configurazione di fabbrica')) : '',
       h('p', { class: 'hint' }, 'LCD legacy e LED test decodificano tutta la pagina $Dxxx come le schede reali: si usano da sole o spostate in un’altra pagina.'),
     );

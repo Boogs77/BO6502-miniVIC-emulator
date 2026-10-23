@@ -147,6 +147,7 @@ export class Emulator {
     void this.audio.start()
       .then(() => { this.machine.audio.outputRate = this.audio.sampleRate; })
       .catch(() => this.onMessage('Audio non disponibile nel browser', 'error'));
+    this.machine.randomRam = this.settings.randomRam;
     this.machine.powerOn();
     this.powered = true;
     this.paused = false;
