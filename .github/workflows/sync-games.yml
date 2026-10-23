@@ -3,6 +3,9 @@
 # Every day (and on demand) compares the published games with the emulator ones.
 # If there are new or updated games: copies them, checks that every game reaches its title,
 # commits to main and republishes the site on GitHub Pages.
+# It also regenerates the default SD (public/sd.img, public/songs) with update_sd.py from the private
+# bo6502-SDbuilder repo, read through the SDBUILDER_DEPLOY_KEY read-only deploy key, so the SD online stays
+# identical to the one bo6502-SDbuilder generates.
 name: Sync miniVIC games
 
 on:
@@ -22,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.sync.outputs.changed }}
+      sd_changed: ${{ steps.sd.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,6 +44,29 @@ jobs:
           node scripts/sync-games.mjs --github --check   # after the sync it must be in sync
           rm sync.json
 
+      - name: Check out bo6502-SDbuilder (private, read-only deploy key)
+        uses: actions/checkout@v4
+        with:
+          repository: Boogs77/bo6502-SDbuilder
+          ssh-key: ${{ secrets.SDBUILDER_DEPLOY_KEY }}
+          path: _sdbuilder
+
+      - name: Check out miniVIC_games
+        uses: actions/checkout@v4
+        with:
+          repository: Boogs77/miniVIC_games
+          path: _minivic
+
+      - id: sd
+        name: Regenerate the default SD with update_sd.py
+        run: |
+          python3 _sdbuilder/update_sd.py --minivic _minivic/bin --emulator "$GITHUB_WORKSPACE"
+          if [ -n "$(git status --porcelain public/sd.img public/songs)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check that every game reaches its title screen
         if: steps.sync.outputs.changed == 'true'
         run: |
@@ -47,17 +74,17 @@ jobs:
           node tests/run.mjs games
 
       - name: Commit and push
-        if: steps.sync.outputs.changed == 'true'
+        if: steps.sync.outputs.changed == 'true' || steps.sd.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/games src/machines/games.ts
-          git commit -m "Sync miniVIC games from miniVIC_games"
+          git add public/games src/machines/games.ts public/sd.img public/songs
+          git commit -m "Sync miniVIC games and the default SD"
           git push
 
   deploy:
     needs: sync
-    if: needs.sync.outputs.changed == 'true'
+    if: needs.sync.outputs.changed == 'true' || needs.sync.outputs.sd_changed == 'true'
     permissions:
       contents: read
       pages: write
