@@ -88,7 +88,7 @@ export class Emulator {
   }
 
   async loadGamesSd(): Promise<void> {
-    // public/sd.img (copied by bo6502-SDbuilder/aggiorna_sd.py) wins: it is the same SD as the real card.
+    // public/sd.img (copied by bo6502-SDbuilder/update_sd.py) wins: it is the same SD as the real card.
     // The "BOGS" check also covers the Vite dev server, which answers index.html for missing files.
     const img = await fetch('./sd.img').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
     if (img && img.byteLength >= 512 && img.byteLength % 512 === 0) {

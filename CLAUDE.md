@@ -62,6 +62,10 @@ src/
                         VirtualKeyboard, Joypad, panels/*
 public/roms/minivic.bin miniVIC BIOS 30.09.26 (WozMon + MS BASIC 1977 + SD menu) - default ROM
 public/games/*.bin      miniVIC games (loaded at $0FD0, started at $1000)
+public/sd.img           default SD, copied here by ../bo6502-SDbuilder/update_sd.py (same image as the real card:
+                        games in alphabetical order, then songs); without it, loadGamesSd builds the SD from GAMES.
+                        Do not edit it here: the SD online must stay identical to the one bo6502-SDbuilder generates
+public/songs/*.bin      the songs on that SD (loaded at $1000), copied by update_sd.py from bo6502-SDbuilder/songs
 public/demos/*.bin      board demos (sources in tests/fixtures/asm, assembled with vasm)
 scripts/sync-games.mjs  games sync from miniVIC_games
 .github/workflows/      pages.yml (build and deploy on GitHub Pages), sync-games.yml (daily games sync)
