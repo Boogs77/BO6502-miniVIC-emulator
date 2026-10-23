@@ -10,13 +10,17 @@ export const OUT = join(process.cwd(), 'tests', 'out');
 
 export function savePng(m: Machine, name: string): string {
   const vdp = m.vdu!.vdp;
-  const w = SCREEN_W, h = SCREEN_H;
+  return writePng(name, SCREEN_W, SCREEN_H, (x, y) => TMS_PALETTE[vdp.frame[y * SCREEN_W + x]]);
+}
+
+/** PNG generico: pixel(x, y) -> [r, g, b] */
+export function writePng(name: string, w: number, h: number, pixel: (x: number, y: number) => readonly number[]): string {
   const raw = Buffer.alloc((w * 3 + 1) * h);
   let o = 0;
   for (let y = 0; y < h; y++) {
     raw[o++] = 0;
     for (let x = 0; x < w; x++) {
-      const c = TMS_PALETTE[vdp.frame[y * w + x]];
+      const c = pixel(x, y);
       raw[o++] = c[0]; raw[o++] = c[1]; raw[o++] = c[2];
     }
   }

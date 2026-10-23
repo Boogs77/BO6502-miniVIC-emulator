@@ -7,6 +7,8 @@
 
 A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-based_modular_computer)** modular computer and for the **miniVIC**, its compact arcade-oriented sibling. Pick the machine, plug the boards into the rack, power it on and play the **[miniVIC games](https://github.com/Boogs77/miniVIC_games)** with stereo sound, an on-screen keyboard and two clickable joysticks.
 
+### ▶️ [Play online](https://boogs77.github.io/BO6502-miniVIC-emulator/)
+
 <p align="center"><img src="docs/screenshot.png" width="90%" /></p>
 
 ---
@@ -19,6 +21,7 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 * **True stereo audio**: two **AY-3-8910** emulated at counter level (tone, 17-bit noise LFSR, 16 envelope shapes, measured logarithmic DAC), cycle-synchronised with the CPU and played through Web Audio.
 * **Clickable input**: PS/2 keyboard and two Sega Master System joysticks drawn on screen, usable with mouse or touch; physical keyboard and gamepads work too.
 * **SD card**: SPI bit-banged SD emulation, `.img` support and an SD image builder compatible with `make_sd.py`.
+* **Display boards**: Big LCD T6963 (160x128 graphics and text), legacy HD44780 16x2 LCD and the 16-LED test board, each with a ready-to-run demo.
 * **Debugger**: CPU registers, disassembly, step / frame, breakpoints, memory and VRAM viewer, VDP, VIA and AY registers.
 
 ---
@@ -36,6 +39,9 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 | **Joystick** | W65C22 + 2x DB9 (Sega) | `$D1A0` | `$D580` |
 | **SD Card** | W65C22 SPI bit-bang | `$D1B0` | `$DD80` |
 | **Audio** | 2x AY-3-8910 stereo | `$D1C0` | `$D380` |
+| **Big LCD** | W65C22 + Toshiba T6963C, 160x128 | `$D190` | — |
+| **Legacy LCD** | W65C22 + HD44780U 16x2 (4 or 8 bit) | `$D000` | — |
+| **LED test** | W65C22 + 16 LEDs | `$D000` | — |
 
 On the BO6502 every board can be removed, moved to a different base address and wired to IRQ or NMI, just like the jumpers on the real modules.
 

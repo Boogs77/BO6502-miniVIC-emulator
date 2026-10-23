@@ -1,6 +1,6 @@
 // Impostazioni salvate nel browser (localStorage, con fallback se non disponibile)
 
-import { MachineConfig, MachineId, defaultConfig } from '../machines/profiles';
+import { MachineConfig, MachineId, defaultConfig, upgradeConfig } from '../machines/profiles';
 import type { KeyMode } from './Emulator';
 
 export interface Settings {
@@ -40,7 +40,7 @@ export function loadSettings(): Settings {
     if (!raw) return d;
     const s = { ...d, ...JSON.parse(raw) } as Settings;
     // il miniVIC ha la configurazione fissa: sempre quella di fabbrica
-    s.configs = { bo6502: s.configs?.bo6502 ?? d.configs.bo6502, minivic: defaultConfig('minivic') };
+    s.configs = { bo6502: upgradeConfig(s.configs?.bo6502 ?? d.configs.bo6502), minivic: defaultConfig('minivic') };
     return s;
   } catch {
     return d;

@@ -47,6 +47,15 @@ export class MediaPanel {
         h('button', { type: 'button', onclick: () => this.loadWozmon() }, 'Carica dump WozMon .txt')),
       h('p', { class: 'hint' }, 'Il dump WozMon ("0FD0: 4C 27 11 ...") si carica agli indirizzi indicati nelle righe.'),
 
+      h('h3', {}, 'Demo delle schede (BO6502)'),
+      h('div', { class: 'row' },
+        ...([['biglcd_hello.bin', 'biglcd', 'Big LCD: Hello, World!'], ['lcd16.bin', 'lcd', 'LCD 16x2'], ['leds.bin', 'leds', 'LED test']] as const)
+          .map(([file, board, label]) => h('button', {
+            type: 'button',
+            onclick: () => emu.runDemo(file, board).catch(e => emu.onMessage(String(e), 'error')),
+          }, label))),
+      h('p', { class: 'hint' }, 'Programmi a $1000: Big LCD dal repo BIGLCD-65c22_test, LCD 16x2 con le routine di lcd.s, LED con l’esempio del README.'),
+
       h('h3', {}, 'Scheda SD'),
       this.sdInfo,
       this.sdList,

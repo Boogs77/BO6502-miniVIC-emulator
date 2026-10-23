@@ -288,3 +288,19 @@ button.icon { padding: 6px 10px; }
   .joy-btn { width: 48px; height: 48px; }
   .dpad-wrap { width: 104px; }
 }
+
+/* ---------------- display delle schede (Big LCD, LCD 16x2, LED) ---------------- */
+.displays { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.display-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
+.display-title { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
+.biglcd-bezel { background: #111; padding: 10px; border-radius: 6px; }
+.biglcd-canvas { display: block; width: min(480px, calc(100vw - 92px)); aspect-ratio: 160 / 128; image-rendering: pixelated; }
+.lcd16-bezel { background: #0e1a04; padding: 8px; border-radius: 6px; }
+.lcd16-canvas { display: block; width: min(360px, calc(100vw - 88px)); height: auto; }
+.led-bank { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.led-name { font-family: var(--mono); font-size: 12px; color: var(--dim); width: 22px; }
+.led-bank .led {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4a1a17, #240c0b); border: 1px solid #12161b;
+}
+.led-bank .led.on { background: radial-gradient(circle at 35% 30%, #ffb3ac, #f0453b); box-shadow: 0 0 10px #f0453b; }

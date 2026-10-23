@@ -14,6 +14,7 @@ import {
 import { buildSdImage, SdProgram } from '../machines/sdimage';
 import { GAMES, GAME_ENTRY, GAME_LOAD } from '../machines/games';
 import { loadSettings, saveSettings, Settings } from './settings';
+import { BoardType } from '../core/Board';
 
 export type KeyMode = 'ps2' | 'joy';
 
@@ -383,7 +384,8 @@ export class Emulator {
   loadProgram(data: Uint8Array, load: number, entry: number): void {
     if (!this.powered) {
       this.powerOn();
-      for (let i = 0; i < 30; i++) this.machine.runFrame(); // il BIOS inizializza le schede
+      // il BIOS inizializza le schede: si aspetta il suo ciclo d'attesa del tasto (max 3 s)
+      for (let i = 0; i < 180 && !(i > 20 && this.biosIdle()); i++) this.machine.runFrame();
       this.machine.audio.take();
     }
     this.machine.poke(load, data);
@@ -398,11 +400,41 @@ export class Emulator {
     this.onState();
   }
 
+  /** il BIOS e' nel menu, in attesa di un tasto (CHRIN a $A94E-$A973 o ciclo $E015-$E018) */
+  private biosIdle(): boolean {
+    const pc = this.machine.cpu.pc;
+    return (pc >= 0xE015 && pc <= 0xE018) || (pc >= 0xA94E && pc <= 0xA973);
+  }
+
   async runGame(file: string): Promise<void> {
     const r = await fetch(`./games/${file}`);
     if (!r.ok) throw new Error(`${file} non trovato`);
     if (this.machineId !== 'minivic') this.onMessage('I giochi sono scritti per il miniVIC (VDP su NMI, audio $D38x, joystick $D58x)');
     this.setKeyMode('joy');
     this.loadProgram(new Uint8Array(await r.arrayBuffer()), GAME_LOAD, GAME_ENTRY);
+  }
+
+  /** demo di una scheda del BO6502: inserisce la scheda nel rack (se serve) e avvia il programma a $1000 */
+  async runDemo(file: string, board: BoardType): Promise<void> {
+    const r = await fetch(`./demos/${file}`);
+    if (!r.ok) throw new Error(`${file} non trovato`);
+    const data = new Uint8Array(await r.arrayBuffer());
+    if (this.machineId !== 'bo6502') this.selectMachine('bo6502');
+    const cfg = this.config.boards.find(b => b.type === board);
+    // LCD legacy e LED decodificano entrambe tutta la pagina $Dxxx: ne resta inserita una sola
+    const rival = this.config.boards.find(b => b.enabled && b.type !== board &&
+      (b.type === 'lcd' || b.type === 'leds') && (board === 'lcd' || board === 'leds') && b.base === cfg?.base);
+    if ((cfg && !cfg.enabled) || rival) {
+      this.powerOff();
+      this.updateConfig(c => {
+        for (const b of c.boards) {
+          if (b.type === board) b.enabled = true;
+          if (rival && b.type === rival.type) b.enabled = false;
+        }
+      });
+      this.onMessage(rival ? `Scheda ${board} inserita al posto di ${rival.type}` : `Scheda ${board} inserita nel rack`);
+    }
+    this.setKeyMode('ps2');
+    this.loadProgram(data, 0x1000, 0x1000);
   }
 }

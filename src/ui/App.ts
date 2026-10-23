@@ -7,6 +7,7 @@ import { Screen } from './Screen';
 import { Terminal } from './Terminal';
 import { VirtualKeyboard } from './VirtualKeyboard';
 import { Joypad } from './Joypad';
+import { Displays } from './Displays';
 import { gamesPanel } from './panels/GamesPanel';
 import { MediaPanel } from './panels/MediaPanel';
 import { RackPanel } from './panels/RackPanel';
@@ -24,6 +25,7 @@ export class App {
   private screen = new Screen();
   private terminal = new Terminal();
   private vkb = new VirtualKeyboard();
+  private displays = new Displays();
   private pads: Joypad[];
   private media: MediaPanel;
   private rack: RackPanel;
@@ -109,6 +111,7 @@ export class App {
 
     const stage = h('section', { class: 'stage' },
       h('div', { class: 'monitor' }, this.screen.el, this.status),
+      this.displays.el,
       h('div', { class: 'deck-toggles' },
         h('label', {}, showKb, ' Tastiera'),
         h('label', {}, showJoy, ' Joystick'),
@@ -199,6 +202,7 @@ export class App {
     this.media.update();
     this.rack.update();
     this.debug.rebind();
+    this.displays.bind(emu.machine);
     document.title = `${MACHINE_NAMES[emu.machineId]} · BO6502 Emulator`;
     this.frame();
   }
@@ -206,6 +210,7 @@ export class App {
   private frame(): void {
     const emu = this.emu;
     this.screen.draw(emu.machine, emu.powered);
+    this.displays.draw(emu.machine, emu.powered);
     if (this.tab === 'terminal') this.terminal.render();
     this.vkb.update();
     this.pads.forEach((p, i) => p.update(emu.joystickState(i)));
