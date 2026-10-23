@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_call:       # richiamato da sync-games.yml dopo l'aggiunta di giochi
 
 permissions:
   contents: read
@@ -20,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main    # anche quando e' richiamato: prende il commit appena fatto dalla sincronizzazione
       - uses: actions/setup-node@v4
         with:
           node-version: 22

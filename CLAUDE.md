@@ -58,11 +58,20 @@ src/
                         VirtualKeyboard, Joypad, panels/*
 public/demos/*.bin      demo delle schede (sorgenti in tests/fixtures/asm, assemblati con vasm)
 .github/workflows/pages.yml  build e deploy su GitHub Pages
+scripts/sync-games.mjs  sincronizzazione dei giochi da miniVIC_games
 public/roms/minivic.bin BIOS miniVIC 30.09.26 (WozMon + MS BASIC 1977 + menu SD) - ROM predefinita
 public/games/*.bin      giochi miniVIC (caricati a $0FD0, avvio a $1000)
 tests/                  run.mjs (runner), cpu/devices/displays/games/minivic.test.ts, helpers.ts (PNG, testo, tasti)
 _old/                   vecchio emulatore (non in git)
 ```
+
+## Giochi: sincronizzazione con miniVIC_games
+- I giochi in `public/games` e l'elenco `src/machines/games.ts` (generato) vengono dal progetto `miniVIC_games`
+  (cartella locale `../MiniVIC Games` o GitHub). Script: `node scripts/sync-games.mjs [--check] [--github] [--prune]`.
+- Skill di progetto **`sync-minivic-games`** (`.claude/skills/`): controlla, sincronizza, verifica i titoli, pubblica.
+- Hook `SessionStart` (`.claude/settings.json`): all'avvio avvisa se ci sono giochi da sincronizzare.
+- Workflow `.github/workflows/sync-games.yml`: ogni giorno sincronizza da GitHub, testa, fa commit e ripubblica Pages.
+- Titoli e giocatori vengono dalla tabella del README dei giochi; non modificare `games.ts` a mano.
 
 ## Le due macchine
 Hardware comune: W65C02S, RAM 32 KB `$0000-$7FFF`, ROM 32 KB `$8000-$FFFF` (con le pagine di I/O

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/sync-games.mjs\" --check --hook 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Controllo dei giochi miniVIC"
+          }
+        ]
+      }
+    ]
+  }
+}
