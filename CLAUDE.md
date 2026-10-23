@@ -54,7 +54,7 @@ src/
   audio/AudioOutput.ts  AudioWorklet (da Blob) con coda; riporta i campioni in coda per agganciare il ritmo
   app/Emulator.ts       controller: macchina, accensione, ciclo RAF agganciato all'audio, input, caricamenti
   app/settings.ts       impostazioni in localStorage (sempre in try/catch)
-  ui/                   App (layout), Screen, Displays (Big LCD, LCD 16x2, LED), Terminal (ANSI),
+  ui/                   App (layout), Screen, Displays (Big LCD, LCD 16x2, LED), Terminal + TerminalModel,
                         VirtualKeyboard, Joypad, panels/*
 public/demos/*.bin      demo delle schede (sorgenti in tests/fixtures/asm, assemblati con vasm)
 .github/workflows/pages.yml  build e deploy su GitHub Pages
@@ -108,6 +108,13 @@ Hardware comune: W65C02S, RAM 32 KB `$0000-$7FFF`, ROM 32 KB `$8000-$FFFF` (con 
   del blocco P: `"BOGS"`, versione 3, n. programmi, flag RUN, parametri (load, len, entry) a `+16+i*8`, nomi a `+96+i*32`.
 - Il caricamento da SD è lento come sul vero hardware (~6 s per 23 KB): è SPI bit-bang.
 
+## Terminale seriale
+- Impaginazione di default **'crt'**: riproduce `print_crt_ch` del BIOS (crt_text_drv.s), cosi' la seriale mostra la
+  stessa pagina del VDU: 40x24, LF = a capo, CR ignorato, a capo automatico a 40 colonne, dopo la riga 24 si riparte
+  dalla riga 0 con lo schermo pulito, ESC (+ sequenza ANSI) = pulisci e torna in alto.
+- 'ansi' = terminale VT100 80x24 con scorrimento (come un PC collegato alla DB9).
+- `tests/serial.test.ts` confronta CRT e seriale ogni 5 frame (tollera un carattere in transito: CHROUT scrive prima sul VDP).
+
 ## Temporizzazione
 - Frame NTSC: 262 righe, 59,92 Hz; cicli per riga = clock / (59,922743 × 262) (≈ 63,7 a 1 MHz).
 - Alla fine di ogni riga il VDP disegna la riga; alla fine della 191 alza F (e INT se abilitato).
@@ -121,7 +128,7 @@ Hardware comune: W65C02S, RAM 32 KB `$0000-$7FFF`, ROM 32 KB `$8000-$FFFF` (con 
   joystick SMS cliccabili (croce trascinabile anche in diagonale, multi-touch). Si illuminano anche con tastiera fisica e gamepad.
 - Tasti fisici in modo joystick: P1 frecce + Z/Spazio (1) + X (2); P2 WASD + F (1) + G (2). Gamepad API: primi due pad.
 - Pannelli: Giochi, Media (ROM, programma .bin, dump WozMon, SD .img, creazione SD), Rack, Audio (VU L/R,
-  registri e note dei due AY, mute per canale), Seriale (terminale ANSI), Debug (CPU, disassemblato, passo/frame,
+  registri e note dei due AY, mute per canale), Seriale (impaginazione 'crt' o 'ansi'), Debug (CPU, disassemblato, passo/frame,
   breakpoint, memoria CPU/VRAM, VDP, VIA).
 
 ## Da fare (prossimi passi)

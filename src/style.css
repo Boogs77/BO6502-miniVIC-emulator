@@ -304,3 +304,6 @@ button.icon { padding: 6px 10px; }
   background: radial-gradient(circle at 35% 30%, #4a1a17, #240c0b); border: 1px solid #12161b;
 }
 .led-bank .led.on { background: radial-gradient(circle at 35% 30%, #ffb3ac, #f0453b); box-shadow: 0 0 10px #f0453b; }
+
+/* terminale con l'impaginazione del CRT: 40 colonne, caratteri piu' grandi */
+.terminal.crt .terminal-screen { min-width: 40ch; font-size: 14px; line-height: 1.3; }
