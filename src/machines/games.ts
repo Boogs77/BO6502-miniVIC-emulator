@@ -21,6 +21,7 @@ export const GAMES: GameInfo[] = [
   { file: 'warlords.bin', title: 'Warlords', players: '1-2' },
   { file: 'defender.bin', title: 'Defender', players: '1' },
   { file: 'radar_scope.bin', title: 'Radar Scope', players: '1-2' },
+  { file: 'space_firebird.bin', title: 'Space Firebird', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
