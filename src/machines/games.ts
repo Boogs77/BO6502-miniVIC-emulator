@@ -1,5 +1,6 @@
 // Giochi miniVIC inclusi (public/games, da github.com/Boogs77/miniVIC_games)
 // Ogni .bin parte da $0FD0 (trampolino NMI) e il programma da $1000.
+// Elenco generato da scripts/sync-games.mjs: si aggiorna con la skill sync-minivic-games.
 
 export interface GameInfo {
   file: string;
@@ -14,8 +15,10 @@ export const GAMES: GameInfo[] = [
   { file: 'missile_command.bin', title: 'Missile Command', players: '1-2' },
   { file: 'lunar_lander.bin', title: 'Lunar Lander', players: '1' },
   { file: 'the_warriors.bin', title: 'The Warriors', players: '2' },
-  { file: 'breakout.bin', title: 'Breakout', players: '1' },
-  { file: 'asteroids.bin', title: 'Asteroids', players: '1' },
+  { file: 'breakout.bin', title: 'Breakout', players: '1-2' },
+  { file: 'asteroids.bin', title: 'Asteroids', players: '1-2' },
+  { file: 'space_invaders.bin', title: 'Space Invaders', players: '1-2' },
+  { file: 'warlords.bin', title: 'Warlords', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;

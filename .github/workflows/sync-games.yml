@@ -1,0 +1,65 @@
+# Sincronizzazione automatica dei giochi da github.com/Boogs77/miniVIC_games
+#
+# Ogni giorno (e a richiesta) confronta i giochi pubblicati con quelli dell'emulatore.
+# Se ci sono giochi nuovi o aggiornati: li copia, controlla che ogni gioco arrivi al titolo,
+# fa commit su main e ripubblica il sito su GitHub Pages.
+name: Sync miniVIC games
+
+on:
+  schedule:
+    - cron: '17 5 * * *'      # ogni giorno alle 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-games
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - id: sync
+        name: Sync games from miniVIC_games
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/sync-games.mjs --github --json | tee sync.json
+          echo "changed=$(node -p "require('./sync.json').changed")" >> "$GITHUB_OUTPUT"
+          node scripts/sync-games.mjs --check   # dopo la sincronizzazione deve risultare allineato
+          rm sync.json
+
+      - name: Check that every game reaches its title screen
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          npx tsc --noEmit
+          node tests/run.mjs games
+
+      - name: Commit and push
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/games src/machines/games.ts
+          git commit -m "Sync miniVIC games from miniVIC_games"
+          git push
+
+  deploy:
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
