@@ -24,6 +24,7 @@ export const GAMES: GameInfo[] = [
   { file: 'space_firebird.bin', title: 'Space Firebird', players: '1-2' },
   { file: 'moon_cresta.bin', title: 'Moon Cresta', players: '1-2' },
   { file: 'stargate.bin', title: 'Stargate', players: '1-2' },
+  { file: 'gravitar.bin', title: 'Gravitar', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
