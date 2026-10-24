@@ -16,7 +16,7 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 ## ✨ Features
 
 * **Two machines**: switch between **BO6502** (configurable rack) and **miniVIC** (fixed layout) with one click.
-* **Real BIOS**: boots the miniVIC BIOS 30.09.26 (WozMon, Microsoft BASIC 1977, SD programs menu).
+* **Real BIOS**: boots the miniVIC BIOS 24.10.26 (WozMon, Microsoft BASIC 1977, SD programs menu).
 * **Accurate TMS9918A**: scanline renderer, all video modes, 32 sprites with the 4-per-line limit, 5th sprite flag, collisions, early clock, magnification, real port latch/read-ahead behaviour and vblank interrupt.
 * **True stereo audio**: two **AY-3-8910** emulated at counter level (tone, 17-bit noise LFSR, 16 envelope shapes, measured logarithmic DAC), cycle-synchronised with the CPU and played through Web Audio.
 * **Clickable input**: PS/2 keyboard and two Sega Master System joysticks drawn on screen, usable with mouse or touch; physical keyboard and gamepads work too.

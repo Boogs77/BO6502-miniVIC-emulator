@@ -84,7 +84,7 @@ export class Emulator {
     const r = await fetch('./roms/minivic.bin');
     if (!r.ok) throw new Error('Default ROM not found');
     this.romData = new Uint8Array(await r.arrayBuffer());
-    this.romName = 'BIOS miniVIC 30.09.26 (WozMon + MS BASIC + SD)';
+    this.romName = 'BIOS miniVIC 24.10.26 (WozMon + MS BASIC + SD)';
   }
 
   async loadGamesSd(): Promise<void> {
