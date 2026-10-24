@@ -60,7 +60,7 @@ src/
   app/settings.ts       settings in localStorage (always in try/catch)
   ui/                   App (layout), Screen, Displays (Big LCD, LCD 16x2, LEDs), Terminal + TerminalModel,
                         VirtualKeyboard, Joypad, panels/*
-public/roms/minivic.bin miniVIC BIOS 30.09.26 (WozMon + MS BASIC 1977 + SD menu) - default ROM
+public/roms/minivic.bin miniVIC BIOS 24.10.26 (WozMon + MS BASIC 1977 + SD menu) - default ROM
 public/games/*.bin      miniVIC games (loaded at $0FD0, started at $1000)
 public/sd.img           default SD, copied here by ../bo6502-SDbuilder/update_sd.py (same image as the real card:
                         games in alphabetical order, then songs); without it, loadGamesSd builds the SD from GAMES.
@@ -115,7 +115,9 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
   To report/fix in the games (the user asked not to fix them for now): initialise the NMI variables
   (or read VREG) before enabling the INT.
 
-## miniVIC BIOS (source: `G:\Il mio Drive\Progetti\6205\001 - MSBASIC\023 - ...\msbasic\`)
+## miniVIC BIOS (source: `G:\Il mio Drive\Progetti\6205\001 - MSBASIC\024 - ...\msbasic\`)
+- 24.10.26 (firmware 024): the SD menu flushes the keyboard after drawing a page, so the release of A/D
+  (whose F0 byte is overwritten during the slow SD read) is no longer read as a second page change.
 - Vectors: RESET `$E000` (menu), NMI `$A785` → `PHA PHX PHY / JSR $0FD0 / LDA $B001 / PLY PLX PLA / RTI`,
   IRQ `$A9A3` → `JSR $0FA0` (RAM trampolines provided by the program).
 - Menu: 1 WozMon (`$FE00`), 2 MS BASIC (`$8000`), 3 SD programs, 4 information.
