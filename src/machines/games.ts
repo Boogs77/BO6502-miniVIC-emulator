@@ -25,6 +25,7 @@ export const GAMES: GameInfo[] = [
   { file: 'moon_cresta.bin', title: 'Moon Cresta', players: '1-2' },
   { file: 'stargate.bin', title: 'Stargate', players: '1-2' },
   { file: 'gravitar.bin', title: 'Gravitar', players: '1-2' },
+  { file: 'quantum.bin', title: 'Quantum', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
