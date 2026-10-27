@@ -28,6 +28,7 @@ export const GAMES: GameInfo[] = [
   { file: 'quantum.bin', title: 'Quantum', players: '1-2' },
   { file: 'joust.bin', title: 'Joust', players: '1-2' },
   { file: 'exerion.bin', title: 'Exerion', players: '1-2' },
+  { file: 'bubbles.bin', title: 'Bubbles', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
