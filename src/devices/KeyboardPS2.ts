@@ -3,9 +3,12 @@
 // On the real board two 74HCT595s turn the keyboard serial stream into a byte on the
 // VIA port A and KB_INT goes to CA1: the CPU receives the raw set 2 scancodes
 // (make code, F0 + code on release, E0 prefix for the extended keys).
-// A PS/2 byte takes about 1 ms: queued bytes are presented one at a time, the next one
-// when the CPU has read the previous one (or anyway after a maximum time, as on the
-// real circuit, where an unread byte is overwritten).
+// A PS/2 byte takes about 1 ms. The bytes of one key event (E0, F0, code) leave the
+// keyboard back to back, without waiting for the CPU, as on the real circuit: an unread
+// byte is overwritten by the next one (the BIOS FLUSH_KEYBOARD_HARD relies on this to
+// drop a release that arrives during its delay). Between two key events the emulator
+// waits until the CPU has read the last byte (or anyway a maximum time), so the events
+// queued between two frames are not lost.
 
 import { VIA6522 } from './VIA6522';
 
@@ -38,7 +41,10 @@ const BYTE_CYCLES = 1100;       // ~1.1 ms at 1 MHz for one PS/2 byte
 const MAX_WAIT_CYCLES = 30000;  // after ~30 ms the next byte overwrites it anyway
 
 export class KeyboardPS2 {
-  private queue: number[] = [];
+  /** queued key events, each one a sequence of bytes sent back to back */
+  private queue: number[][] = [];
+  /** bytes of the event being sent */
+  private packet: number[] = [];
   private wait = 0;
   private presented = false;
   private readonly via: VIA6522;
@@ -51,6 +57,7 @@ export class KeyboardPS2 {
 
   reset(): void {
     this.queue = [];
+    this.packet = [];
     this.down.clear();
     this.presented = false;
     this.wait = 0;
@@ -63,8 +70,7 @@ export class KeyboardPS2 {
     if (this.down.has(code) && !repeat) return true;
     this.down.add(code);
     if (code === 'Pause') return true;
-    if (sc & 0x100) this.queue.push(0xE0);
-    this.queue.push(sc & 0xFF);
+    this.queue.push(sc & 0x100 ? [0xE0, sc & 0xFF] : [sc & 0xFF]);
     return true;
   }
 
@@ -72,8 +78,7 @@ export class KeyboardPS2 {
     const sc = PS2_SET2[code];
     if (sc === undefined) return false;
     if (!this.down.delete(code)) return true;
-    if (sc & 0x100) this.queue.push(0xE0);
-    this.queue.push(0xF0, sc & 0xFF);
+    this.queue.push(sc & 0x100 ? [0xE0, 0xF0, sc & 0xFF] : [0xF0, sc & 0xFF]);
     return true;
   }
 
@@ -88,6 +93,12 @@ export class KeyboardPS2 {
   /** advances by n CPU cycles: presents the next byte on port A */
   tick(n: number): void {
     if (this.wait > 0) this.wait -= n;
+    if (this.packet.length > 0) {
+      // inside an event: the next byte follows after one byte time, read or not
+      if (this.wait > 0) return;
+      this.present(this.packet.shift()!);
+      return;
+    }
     if (this.presented) {
       // the byte was read when the CPU cleared the CA1 flag
       const read = (this.via.ifr & 0x02) === 0;
@@ -95,7 +106,12 @@ export class KeyboardPS2 {
       this.presented = false;
     }
     if (this.wait > 0 || this.queue.length === 0) return;
-    this.via.inputA = this.queue.shift()!;
+    this.packet = this.queue.shift()!;
+    this.present(this.packet.shift()!);
+  }
+
+  private present(byte: number): void {
+    this.via.inputA = byte;
     this.via.pulseCA1();
     this.presented = true;
     this.wait = BYTE_CYCLES;
