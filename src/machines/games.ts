@@ -26,6 +26,7 @@ export const GAMES: GameInfo[] = [
   { file: 'stargate.bin', title: 'Stargate', players: '1-2' },
   { file: 'gravitar.bin', title: 'Gravitar', players: '1-2' },
   { file: 'quantum.bin', title: 'Quantum', players: '1-2' },
+  { file: 'joust.bin', title: 'Joust', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
