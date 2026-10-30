@@ -32,6 +32,7 @@ export const GAMES: GameInfo[] = [
   { file: 'times_tables.bin', title: 'Times Tables', players: '1-2' },
   { file: 'robert.bin', title: 'Robert', players: '1-2' },
   { file: 'cloud_raider.bin', title: 'Cloud Raider', players: '1-2' },
+  { file: 'crystal_gardens.bin', title: 'Crystal Gardens', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
