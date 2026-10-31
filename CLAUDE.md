@@ -64,7 +64,8 @@ src/
                         VirtualKeyboard, Joypad, panels/*
 public/roms/minivic.bin miniVIC BIOS 24.10.26 (WozMon + MS BASIC 1977 + SD menu), 'std' in the BIOS selector
 public/roms/minivic_keybsd.bin  BIOS 27.10.26 KEYB/SD ('keybsd', **default**): extended keyboard, SDSC v1/v2 + SDHC,
-                        sector read/write ($FD18-$FD21). Copied by scripts/sync-bios.mjs from ../miniVIC BIOS/tmp/boogs.bin
+                        sector read/write ($FD18-$FD21). Copied by scripts/sync-bios.mjs from bin/boogs.bin of
+                        github.com/Boogs77/miniVIC_bios (local copy ../miniVIC BIOS)
 public/sd_full.img.gz   **default SD**: sd_full.img of bo6502-SDbuilder (update_sd.py --mode full: games, MiniVIC Apps,
                         songs, sample documents at $00800000), gzipped by scripts/pack-sd-full.mjs, unpacked in the browser
 public/games/*.bin      miniVIC games (loaded at $0FD0, started at $1000)
@@ -75,7 +76,7 @@ public/sd.img           default SD, copied here by ../bo6502-SDbuilder/update_sd
 public/songs/*.bin      the songs on that SD (loaded at $1000), copied by update_sd.py from bo6502-SDbuilder/songs
 public/demos/*.bin      board demos (sources in tests/fixtures/asm, assembled with vasm)
 scripts/sync-games.mjs  games sync from miniVIC_games
-.github/workflows/      pages.yml (build and deploy on GitHub Pages), sync-games.yml (daily games sync)
+.github/workflows/      pages.yml (build and deploy on GitHub Pages), sync-games.yml (daily games and BIOS sync)
 .claude/                settings.json (SessionStart hook), skills/sync-minivic-games
 tests/                  run.mjs (runner), cpu/devices/displays/games/minivic/serial.test.ts, helpers.ts
 _old/                   old emulator (not in git)
@@ -87,6 +88,8 @@ _old/                   old emulator (not in git)
 - Project skill **`sync-minivic-games`** (`.claude/skills/`): checks, syncs, verifies the title screens, publishes.
 - `SessionStart` hook (`.claude/settings.json`): at startup it warns if there are games to sync.
 - `.github/workflows/sync-games.yml` workflow: every day it syncs from GitHub, tests, commits and republishes Pages.
+  The same workflow also syncs the KEYB/SD BIOS from github.com/Boogs77/miniVIC_bios (`sync-bios.mjs --github`)
+  and runs the bios, minivic and games tests when it changed.
 - Titles and player counts come from the table in the games README; do not edit `games.ts` by hand.
 
 ## The two machines
@@ -126,7 +129,8 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
 - Two images, chosen in Media → ROM (setting `bios`, default `'keybsd'`): changing it rebuilds the machine with the
   same SD and powers it on again. KEYB/SD (project `../miniVIC BIOS`, doc `KEYB_SD.md`) keeps the jump table
   `$FD00-$FD15` and adds `$FD18` read sector, `$FD1B` write sector (`SD_LBA` $0316-$0319), `$FD1E` SD init
-  (A = card type), `$FD21` keyboard mode. Update it with `node scripts/sync-bios.mjs` (`--check`, `--source`).
+  (A = card type), `$FD21` keyboard mode. Update it with `node scripts/sync-bios.mjs` (`--check`, `--source`, `--github`); the BIOS project publishes
+  it in `bin/boogs.bin` of github.com/Boogs77/miniVIC_bios.
 - The standard 24.10.26 has no SD timeout: with an SDHC card (or no card) it waits forever on ACMD41, like the real one.
 - SD images are extended in memory to 16 MB (document area of the MiniVIC Apps at sector 16384); writes are lost on
   reload unless the user downloads the image (user's decision 2026-10-27: no browser persistence).

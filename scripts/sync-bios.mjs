@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 // sync-bios.mjs - brings the miniVIC BIOS KEYB/SD fork into the emulator
 //
-//   node scripts/sync-bios.mjs             copies the fork's tmp/boogs.bin to public/roms/minivic_keybsd.bin
-//                                          (after the checks) and regenerates src/machines/roms.ts
+//   node scripts/sync-bios.mjs             copies the published bin/boogs.bin of the BIOS project to
+//                                          public/roms/minivic_keybsd.bin (after the checks) and regenerates
+//                                          src/machines/roms.ts
 //   node scripts/sync-bios.mjs --check     check only: exit 0 = in sync, 2 = there are differences
 //   node scripts/sync-bios.mjs --check --hook
-//                                          like --check, but prints a notice only when the fork has a newer
+//                                          like --check, but prints a notice only when the BIOS project has a newer
 //                                          boogs.bin (for the Claude Code SessionStart hook) and always exits with 0
 //   --source <file>                        BIOS image to copy (default: MINIVIC_BIOS_KEYBSD, then the
-//                                          tmp/boogs.bin of the "miniVIC BIOS" project next to this repository,
-//                                          then the one of the original fork folder on Google Drive)
+//                                          bin/boogs.bin of the "miniVIC BIOS" project next to this repository)
+//   --github                               reads bin/boogs.bin from github.com/Boogs77/miniVIC_bios instead of locally
 //   --json                                 prints the summary as JSON
 //
 // Checks before copying: exactly 32768 bytes, reset vector ($FFFC) inside the ROM, JMP ($4C) at $FD18
@@ -26,9 +27,8 @@ const ROMS_DIR = join(ROOT, 'public', 'roms');
 const ROMS_TS = join(ROOT, 'src', 'machines', 'roms.ts');
 const STD_FILE = 'minivic.bin';
 const KEYBSD_FILE = 'minivic_keybsd.bin';
-const LOCAL_SOURCE = join(ROOT, '..', 'miniVIC BIOS', 'tmp', 'boogs.bin');
-const FORK_SOURCE = 'G:\\Il mio Drive\\Progetti\\6205\\001 - MSBASIC\\' +
-  '025 - C6502 - msbasic-20261027- CLAUDE - KEYB_SD\\msbasic\\tmp\\boogs.bin';
+const LOCAL_SOURCE = join(ROOT, '..', 'miniVIC BIOS', 'bin', 'boogs.bin');
+const REPO = 'Boogs77/miniVIC_bios';
 
 const args = process.argv.slice(2);
 const flag = f => args.includes(f);
@@ -48,11 +48,11 @@ function validate(rom) {
   return null;
 }
 
-/** version from the menu text, or the file date (dd.mm.yy) */
+/** version from the menu text, or the file date (dd.mm.yy; today for a download) */
 function version(rom, file) {
   const m = Buffer.from(rom).toString('latin1').match(/BIOS Version ([ -~]+)/);
   if (m) return m[1].trim();
-  const d = statSync(file).mtime;
+  const d = file && existsSync(file) ? statSync(file).mtime : new Date();
   const p = n => String(n).padStart(2, '0');
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${p(d.getFullYear() % 100)}`;
 }
@@ -79,17 +79,30 @@ export const ROMS: RomInfo[] = [
 `;
 }
 
-function main() {
-  const source = opt('--source') ?? process.env.MINIVIC_BIOS_KEYBSD ?? (existsSync(LOCAL_SOURCE) ? LOCAL_SOURCE : FORK_SOURCE);
-  if (!existsSync(source)) throw new Error(`BIOS image not found: ${source} (use --source)`);
-  const rom = new Uint8Array(readFileSync(source));
+/** the BIOS image to copy: { rom, source, file } (file = local path, null for a download) */
+async function readSource() {
+  if (flag('--github')) {
+    const source = `https://raw.githubusercontent.com/${REPO}/main/bin/boogs.bin`;
+    const headers = { 'User-Agent': 'bo6502-emulator-sync' };
+    if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    const r = await fetch(source, { headers });
+    if (!r.ok) throw new Error(`GitHub: ${source}: HTTP ${r.status}`);
+    return { rom: new Uint8Array(await r.arrayBuffer()), source, file: null };
+  }
+  const source = opt('--source') ?? process.env.MINIVIC_BIOS_KEYBSD ?? LOCAL_SOURCE;
+  if (!existsSync(source)) throw new Error(`BIOS image not found: ${source} (use --source or --github)`);
+  return { rom: new Uint8Array(readFileSync(source)), source, file: source };
+}
+
+async function main() {
+  const { rom, source, file } = await readSource();
   const bad = validate(rom);
   if (bad) throw new Error(`${source}: ${bad}; nothing copied`);
 
   const stdPath = join(ROMS_DIR, STD_FILE);
   const destPath = join(ROMS_DIR, KEYBSD_FILE);
   const stdVer = version(new Uint8Array(readFileSync(stdPath)), stdPath);
-  const ver = version(rom, source);
+  const ver = version(rom, file);
   const romChanged = !existsSync(destPath) || sha(readFileSync(destPath)) !== sha(rom);
   const ts = renderRomsTs(stdVer, ver);
   const tsChanged = !existsSync(ROMS_TS) || readFileSync(ROMS_TS, 'utf8') !== ts;
@@ -103,7 +116,7 @@ function main() {
   if (flag('--json')) {
     console.log(JSON.stringify(summary, null, 2));
   } else if (hook) {
-    if (romChanged) console.log(`The KEYB/SD BIOS fork has a new boogs.bin (${ver}): run "node scripts/sync-bios.mjs" to bring it into the emulator.`);
+    if (romChanged) console.log(`The miniVIC BIOS project has a new bin/boogs.bin (${ver}): run "node scripts/sync-bios.mjs" to bring it into the emulator.`);
   } else if (!summary.changed) {
     console.log(`BIOS KEYB/SD already in sync (${ver}).`);
   } else {
@@ -113,7 +126,7 @@ function main() {
 }
 
 try {
-  main();
+  await main();
 } catch (e) {
   if (hook) process.exit(0); // the hook must never block the session start
   console.error(`sync-bios: ${e.message}`);

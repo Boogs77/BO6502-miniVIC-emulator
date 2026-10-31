@@ -1,13 +1,17 @@
-# Automatic sync of the games from github.com/Boogs77/miniVIC_games
+# Automatic sync of the games from github.com/Boogs77/miniVIC_games and of the KEYB/SD BIOS
+# from github.com/Boogs77/miniVIC_bios
 #
 # Every day (and on demand) compares the published games with the emulator ones.
 # If there are new or updated games: copies them, checks that every game reaches its title,
 # commits to main and republishes the site on GitHub Pages.
+# The same for the BIOS: if bin/boogs.bin of miniVIC_bios changed, it is copied to
+# public/roms/minivic_keybsd.bin (src/machines/roms.ts regenerated) and the BIOS, miniVIC and
+# games tests must pass before the commit.
 # It also regenerates the default SD (public/sd.img, public/songs) with update_sd.py from the private
 # bo6502-SDbuilder repo, read through the SDBUILDER_DEPLOY_KEY read-only deploy key, so the SD online stays
 # identical to the one bo6502-SDbuilder generates. The full SD (games + MiniVIC Apps, the default one,
 # public/sd_full.img.gz) is rebuilt the same way with the applications of github.com/Boogs77/miniVIC_apps.
-name: Sync miniVIC games
+name: Sync miniVIC games and BIOS
 
 on:
   schedule:
@@ -26,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.sync.outputs.changed }}
+      bios_changed: ${{ steps.bios.outputs.changed }}
       sd_changed: ${{ steps.sd.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +49,14 @@ jobs:
           echo "changed=$(node -p "require('./sync.json').changed")" >> "$GITHUB_OUTPUT"
           node scripts/sync-games.mjs --github --check   # after the sync it must be in sync
           rm sync.json
+
+      - id: bios
+        name: Sync the KEYB/SD BIOS from miniVIC_bios
+        run: |
+          node scripts/sync-bios.mjs --github --json | tee bios.json
+          echo "changed=$(node -p "require('./bios.json').changed")" >> "$GITHUB_OUTPUT"
+          node scripts/sync-bios.mjs --github --check    # after the sync it must be in sync
+          rm bios.json
 
       - name: Check out bo6502-SDbuilder (private, read-only deploy key)
         uses: actions/checkout@v4
@@ -77,23 +90,30 @@ jobs:
           fi
 
       - name: Check that every game reaches its title screen
-        if: steps.sync.outputs.changed == 'true'
+        if: steps.sync.outputs.changed == 'true' || steps.bios.outputs.changed == 'true'
         run: |
           npx tsc --noEmit
           node tests/run.mjs games
 
+      - name: Check the new BIOS (BIOS selection, SD, keyboard, miniVIC system)
+        if: steps.bios.outputs.changed == 'true'
+        run: |
+          node tests/run.mjs bios
+          node tests/run.mjs minivic
+
       - name: Commit and push
-        if: steps.sync.outputs.changed == 'true' || steps.sd.outputs.changed == 'true'
+        if: steps.sync.outputs.changed == 'true' || steps.bios.outputs.changed == 'true' || steps.sd.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/games src/machines/games.ts public/sd.img public/sd_full.img.gz public/songs
-          git commit -m "Sync miniVIC games and the default SD"
+          git add public/games src/machines/games.ts public/roms/minivic_keybsd.bin src/machines/roms.ts \
+                  public/sd.img public/sd_full.img.gz public/songs
+          git commit -m "Sync miniVIC games, BIOS and the default SD"
           git push
 
   deploy:
     needs: sync
-    if: needs.sync.outputs.changed == 'true' || needs.sync.outputs.sd_changed == 'true'
+    if: needs.sync.outputs.changed == 'true' || needs.sync.outputs.bios_changed == 'true' || needs.sync.outputs.sd_changed == 'true'
     permissions:
       contents: read
       pages: write
