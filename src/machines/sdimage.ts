@@ -101,3 +101,14 @@ function ascii(s: string): Uint8Array {
 function hex4(v: number): string {
   return v.toString(16).toUpperCase().padStart(4, '0');
 }
+
+/** the MiniVIC Apps keep their documents from $00800000 (sector 16384), after the 255 program slots */
+export const SD_MIN_SIZE = 0x01000000;
+
+/** pads an image with zeros to at least 16 MB (in memory only); a bigger image is returned as is */
+export function extendSdImage(image: Uint8Array): Uint8Array {
+  if (image.length >= SD_MIN_SIZE) return image;
+  const out = new Uint8Array(SD_MIN_SIZE);
+  out.set(image);
+  return out;
+}

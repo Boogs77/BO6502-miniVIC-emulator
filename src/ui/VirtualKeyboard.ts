@@ -1,7 +1,8 @@
 // Virtual PS/2 keyboard (US layout, like the BIOS scancode table)
 //
 // With the mouse: holding a key down = key pressed (make code, then F0 + code on
-// release). Shift, Ctrl and Alt stay latched until the next key.
+// release). Shift, Ctrl, Alt and Caps Lock stay latched until the next key.
+// The editing keys (Ins, Del, Home, End, PgUp, PgDn) are there for compact keyboards that lack them.
 
 import { h } from './dom';
 
@@ -9,7 +10,8 @@ type KeyDef = [code: string, label: string, shifted?: string, width?: number];
 
 const ROWS: KeyDef[][] = [
   [['Escape', 'Esc', , 1.25], ['F1', 'F1'], ['F2', 'F2'], ['F3', 'F3'], ['F4', 'F4'], ['F5', 'F5'], ['F6', 'F6'],
-    ['F7', 'F7'], ['F8', 'F8'], ['F9', 'F9'], ['F10', 'F10'], ['F11', 'F11'], ['F12', 'F12']],
+    ['F7', 'F7'], ['F8', 'F8'], ['F9', 'F9'], ['F10', 'F10'], ['F11', 'F11'], ['F12', 'F12'],
+    ['Insert', 'Ins'], ['Delete', 'Del'], ['Home', 'Home'], ['End', 'End'], ['PageUp', 'PgUp'], ['PageDown', 'PgDn']],
   [['Backquote', '`', '~'], ['Digit1', '1', '!'], ['Digit2', '2', '@'], ['Digit3', '3', '#'], ['Digit4', '4', '$'],
     ['Digit5', '5', '%'], ['Digit6', '6', '^'], ['Digit7', '7', '&'], ['Digit8', '8', '*'], ['Digit9', '9', '('],
     ['Digit0', '0', ')'], ['Minus', '-', '_'], ['Equal', '=', '+'], ['Backspace', '← Back', , 2]],
@@ -24,7 +26,8 @@ const ROWS: KeyDef[][] = [
     ['ControlRight', 'Ctrl', , 1.5], ['ArrowLeft', '◀'], ['ArrowUp', '▲'], ['ArrowDown', '▼'], ['ArrowRight', '▶']],
 ];
 
-const MODIFIERS = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight']);
+const MODIFIERS = new Set(['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'CapsLock']);
+const SMALL_KEYS = new Set(['Insert', 'Delete', 'Home', 'End', 'PageUp', 'PageDown']);
 
 export interface KeySink {
   keyDown(code: string): void;
@@ -44,7 +47,7 @@ export class VirtualKeyboard {
       const r = h('div', { class: 'vk-row' });
       for (const [code, label, shifted, width = 1] of row) {
         const k = h('button', {
-          class: 'vk-key' + (MODIFIERS.has(code) ? ' mod' : '') + (code.startsWith('F') && code.length <= 3 ? ' fn' : ''),
+          class: 'vk-key' + (MODIFIERS.has(code) ? ' mod' : '') + (/^F\d+$/.test(code) || SMALL_KEYS.has(code) ? ' fn' : ''),
           type: 'button', 'data-code': code, title: code,
           style: `flex-grow:${width};flex-basis:${width * 2.6}em`,
         }, shifted ? h('span', { class: 'vk-shift' }, shifted) : null, h('span', { class: 'vk-main' }, label));

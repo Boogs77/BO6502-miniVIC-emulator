@@ -16,11 +16,12 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 ## ✨ Features
 
 * **Two machines**: switch between **BO6502** (configurable rack) and **miniVIC** (fixed layout) with one click.
-* **Real BIOS**: boots the miniVIC BIOS 24.10.26 (WozMon, Microsoft BASIC 1977, SD programs menu).
+* **Real BIOS**: boots the miniVIC BIOS **27.10.26 KEYB/SD** (extended keyboard, SDHC cards, sector read/write) or the standard 24.10.26 (WozMon, Microsoft BASIC 1977, SD programs menu), selectable in the Media panel.
+* **Full SD by default**: all the miniVIC games, the [MiniVIC Apps](https://github.com/Boogs77/miniVIC_apps) (Write, Calc, File, Desk, Term, Asm, Mon, Disk), songs and sample documents, ready in the SD menu (key `3`).
 * **Accurate TMS9918A**: scanline renderer, all video modes, 32 sprites with the 4-per-line limit, 5th sprite flag, collisions, early clock, magnification, real port latch/read-ahead behaviour and vblank interrupt.
 * **True stereo audio**: two **AY-3-8910** emulated at counter level (tone, 17-bit noise LFSR, 16 envelope shapes, measured logarithmic DAC), cycle-synchronised with the CPU and played through Web Audio.
 * **Clickable input**: PS/2 keyboard and two Sega Master System joysticks drawn on screen, usable with mouse or touch; physical keyboard and gamepads work too.
-* **SD card**: SPI bit-banged SD emulation, `.img` support and an SD image builder compatible with `make_sd.py`.
+* **SD card**: SPI bit-banged SD emulation of SDSC v1, SDSC v2 and SDHC cards, read and write, a 16 MB document area, `.img` upload/download and an SD image builder compatible with `make_sd.py`.
 * **Display boards**: Big LCD T6963 (160x128 graphics and text), legacy HD44780 16x2 LCD and the 16-LED test board, each with a ready-to-run demo.
 * **Debugger**: CPU registers, disassembly, step / frame, breakpoints, memory and VRAM viewer, VDP, VIA and AY registers.
 

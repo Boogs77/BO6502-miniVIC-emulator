@@ -5,7 +5,8 @@
 # commits to main and republishes the site on GitHub Pages.
 # It also regenerates the default SD (public/sd.img, public/songs) with update_sd.py from the private
 # bo6502-SDbuilder repo, read through the SDBUILDER_DEPLOY_KEY read-only deploy key, so the SD online stays
-# identical to the one bo6502-SDbuilder generates.
+# identical to the one bo6502-SDbuilder generates. The full SD (games + MiniVIC Apps, the default one,
+# public/sd_full.img.gz) is rebuilt the same way with the applications of github.com/Boogs77/miniVIC_apps.
 name: Sync miniVIC games
 
 on:
@@ -57,11 +58,19 @@ jobs:
           repository: Boogs77/miniVIC_games
           path: _minivic
 
+      - name: Check out miniVIC_apps
+        uses: actions/checkout@v4
+        with:
+          repository: Boogs77/miniVIC_apps
+          path: _apps
+
       - id: sd
-        name: Regenerate the default SD with update_sd.py
+        name: Regenerate the games SD and the full SD with update_sd.py
         run: |
           python3 _sdbuilder/update_sd.py --minivic _minivic/bin --emulator "$GITHUB_WORKSPACE"
-          if [ -n "$(git status --porcelain public/sd.img public/songs)" ]; then
+          python3 _sdbuilder/update_sd.py --mode full --minivic _minivic/bin --apps _apps/bin
+          node scripts/pack-sd-full.mjs --source _sdbuilder/sd_full.img
+          if [ -n "$(git status --porcelain public/sd.img public/sd_full.img.gz public/songs)" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -78,7 +87,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/games src/machines/games.ts public/sd.img public/songs
+          git add public/games src/machines/games.ts public/sd.img public/sd_full.img.gz public/songs
           git commit -m "Sync miniVIC games and the default SD"
           git push
 

@@ -11,8 +11,10 @@ import {
   AudioBoard, JoystickBoard, KeyboardBoard, SdCardBoard, SerialBoard,
   JOY_DOWN, JOY_FIRE1, JOY_FIRE2, JOY_LEFT, JOY_RIGHT, JOY_UP,
 } from '../boards/Boards';
-import { buildSdImage, SdProgram } from '../machines/sdimage';
+import { buildSdImage, extendSdImage, SdProgram } from '../machines/sdimage';
 import { GAMES, GAME_ENTRY, GAME_LOAD } from '../machines/games';
+import { BiosId, ROMS } from '../machines/roms';
+import { SdKind } from '../devices/SDCard';
 import { loadSettings, saveSettings, Settings } from './settings';
 import { BoardType } from '../core/Board';
 
@@ -38,8 +40,13 @@ export class Emulator {
   speed = 1;
   romData: Uint8Array | null = null;
   romName = '';
+  /** BIOS in use: one of ROMS, or 'custom' for a file loaded by the user */
+  bios: BiosId | 'custom' = 'std';
+  /** SD image (extended in memory to 16 MB; the card writes into it) */
   sdImage: Uint8Array | null = null;
   sdName = '';
+  /** the card was written since it was inserted or downloaded */
+  sdModified = false;
 
   /** called on every emulated and displayed frame */
   onFrame: () => void = () => {};
@@ -73,18 +80,71 @@ export class Emulator {
     return this.config.id;
   }
 
-  /** loads the default ROM and SD card (at startup) */
+  /** loads the chosen BIOS and the default SD card (at startup) */
   async init(): Promise<void> {
-    await this.loadDefaultRom();
-    await this.loadGamesSd().catch(() => this.onMessage('Default games not found', 'error'));
+    await this.loadRom(this.settings.bios).catch(() => this.loadRom('std'));
+    await this.loadFullSd().catch(() => this.loadGamesSd())
+      .catch(() => this.onMessage('Default games not found', 'error'));
     this.rebuild();
   }
 
-  async loadDefaultRom(): Promise<void> {
-    const r = await fetch('./roms/minivic.bin');
-    if (!r.ok) throw new Error('Default ROM not found');
+  /**
+   * default SD: public/sd_full.img.gz, the full SD of bo6502-SDbuilder (games, MiniVIC Apps, songs,
+   * sample documents; the apps need the BIOS KEYB/SD), gzipped by scripts/pack-sd-full.mjs
+   */
+  async loadFullSd(): Promise<void> {
+    const r = await fetch('./sd_full.img.gz');
+    if (!r.ok || !r.body) throw new Error('full SD not found');
+    let data = new Uint8Array(await r.arrayBuffer());
+    // a server may already have removed the gzip layer (Content-Encoding): unpack only a real .gz
+    if (data[0] === 0x1F && data[1] === 0x8B) {
+      const stream = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('gzip'));
+      data = new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    if (data.length < 512 || data.length % 512 || String.fromCharCode(...data.subarray(0, 4)) !== 'BOGS') {
+      throw new Error('full SD: not an SD image');
+    }
+    this.sdImage = extendSdImage(data);
+    this.sdModified = false;
+    this.sdName = `Full SD: games + MiniVIC Apps (${data[15]} programs)`;
+  }
+
+  /** fetches a BIOS image of the ROMS list (public/roms) */
+  async loadRom(id: BiosId): Promise<void> {
+    const rom = ROMS.find(r => r.id === id) ?? ROMS[0];
+    const r = await fetch(`./roms/${rom.file}`);
+    if (!r.ok) throw new Error(`${rom.title}: ${rom.file} not found`);
     this.romData = new Uint8Array(await r.arrayBuffer());
-    this.romName = 'BIOS miniVIC 24.10.26 (WozMon + MS BASIC + SD)';
+    this.romName = rom.title;
+    this.bios = rom.id;
+  }
+
+  /** changes the BIOS: rebuilds the machine with the same SD image and, if it was on, powers it on again */
+  async selectBios(id: BiosId): Promise<void> {
+    await this.loadRom(id);
+    this.settings.bios = id;
+    this.save();
+    const wasOn = this.powered;
+    this.powerOff();
+    this.rebuild();
+    if (wasOn) this.powerOn();
+  }
+
+  /** short name of the BIOS for the status line */
+  get biosLabel(): string {
+    return this.bios === 'custom' ? 'custom ROM' : `BIOS ${ROMS.find(r => r.id === this.bios)?.version ?? ''}`;
+  }
+
+  /** changes the SD card type: the card is re-inserted, so the BIOS has to initialise it again */
+  setSdKind(kind: SdKind): void {
+    this.settings.sdKind = kind;
+    this.save();
+    const sd = this.machine.board<SdCardBoard>('sdcard');
+    if (sd) {
+      sd.card.kind = kind;
+      sd.card.insert(this.sdImage);
+    }
+    this.onState();
   }
 
   async loadGamesSd(): Promise<void> {
@@ -94,7 +154,8 @@ export class Emulator {
     if (img && img.byteLength >= 512 && img.byteLength % 512 === 0) {
       const data = new Uint8Array(img);
       if (String.fromCharCode(...data.subarray(0, 4)) === 'BOGS') {
-        this.sdImage = data;
+        this.sdImage = extendSdImage(data);
+        this.sdModified = false;
         this.sdName = `BO6502-SDbuilder SD (${data[15]} programs)`;
         return;
       }
@@ -106,7 +167,8 @@ export class Emulator {
       programs.push({ name: g.title, data: new Uint8Array(await r.arrayBuffer()), load: GAME_LOAD, entry: GAME_ENTRY, run: true });
     }
     if (!programs.length) throw new Error('no games');
-    this.sdImage = buildSdImage(programs);
+    this.sdImage = extendSdImage(buildSdImage(programs));
+    this.sdModified = false;
     this.sdName = `miniVIC games (${programs.length} programs)`;
   }
 
@@ -115,7 +177,11 @@ export class Emulator {
     this.machine = buildMachine(this.config);
     if (this.romData) this.machine.loadRom(this.romData);
     const sd = this.machine.board<SdCardBoard>('sdcard');
-    if (sd) sd.card.insert(this.sdImage);
+    if (sd) {
+      sd.card.kind = this.settings.sdKind;
+      sd.card.onWrite = () => this.sdWritten();
+      sd.card.insert(this.sdImage);
+    }
     const serial = this.machine.board<SerialBoard>('serial');
     if (serial) serial.acia.onTransmit = b => this.onSerial(b);
     this.applyAudioSettings();
@@ -375,17 +441,27 @@ export class Emulator {
   }
 
   // ---------------- loading ----------------
+  /** loads a ROM file chosen by the user (not saved in the settings) */
   setRom(data: Uint8Array, name: string): void {
     this.romData = data;
     this.romName = name;
+    this.bios = 'custom';
     this.machine.loadRom(data);
     this.onState();
   }
 
+  /** inserts an SD image, extended in memory to 16 MB for the documents area (the file is not changed) */
   setSdImage(image: Uint8Array | null, name: string): void {
-    this.sdImage = image;
+    this.sdImage = image && extendSdImage(image);
     this.sdName = name;
-    this.machine.board<SdCardBoard>('sdcard')?.card.insert(image);
+    this.sdModified = false;
+    this.machine.board<SdCardBoard>('sdcard')?.card.insert(this.sdImage);
+    this.onState();
+  }
+
+  private sdWritten(): void {
+    if (this.sdModified) return;
+    this.sdModified = true;
     this.onState();
   }
 

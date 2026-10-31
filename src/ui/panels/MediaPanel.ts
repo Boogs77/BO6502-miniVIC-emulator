@@ -1,13 +1,21 @@
 // ROM, programs in RAM and SD card
 
 import { Emulator } from '../../app/Emulator';
+import { BiosId, ROMS } from '../../machines/roms';
+import { SD_KINDS, SdKind } from '../../devices/SDCard';
 import { buildSdImage, checkProgram, defaultEntry, readSdDirectory, SdProgram } from '../../machines/sdimage';
 import { download, h, hex, parseHex, pickFile, readFile } from '../dom';
 
 export class MediaPanel {
   readonly el: HTMLElement;
   private romInfo = h('div', { class: 'info' });
+  private biosSel = h('select', { 'aria-label': 'BIOS' });
+  /** in-page confirmation before a BIOS change restarts a running machine */
+  private biosConfirm = h('div', { class: 'confirm', hidden: true });
   private sdInfo = h('div', { class: 'info' });
+  private sdKindSel = h('select', { 'aria-label': 'SD card type' },
+    ...SD_KINDS.map(([k, label]) => h('option', { value: k }, label)));
+  private sdWarn = h('p', { class: 'hint warn', hidden: true }, 'SDHC needs BIOS KEYB/SD: the standard BIOS waits for the card forever (like on the real hardware).');
   private sdList = h('ol', { class: 'sd-dir' });
   private builder = h('div', { class: 'sd-builder' });
   private pending: SdProgram[] = [];
@@ -23,9 +31,11 @@ export class MediaPanel {
       h('h3', {}, 'ROM (EEPROM AT28C256, 32 KB)'),
       this.romInfo,
       h('div', { class: 'row' },
-        h('button', { type: 'button', onclick: () => this.loadRom() }, 'Load ROM .bin'),
-        h('button', { type: 'button', onclick: () => emu.loadDefaultRom().then(() => { emu.machine.loadRom(emu.romData!); emu.onState(); }) }, 'Default ROM')),
-      h('p', { class: 'hint' }, 'A 32 KB file covers $8000-$FFFF; a shorter one is aligned to the end (vectors at $FFFA). Takes effect at the next reset.'),
+        h('label', {}, 'BIOS ', this.biosSel),
+        h('button', { type: 'button', onclick: () => this.loadRom() }, 'Load ROM .bin')),
+      this.biosConfirm,
+      h('p', { class: 'hint' }, 'KEYB/SD adds the extended keyboard, SDHC cards and sector read/write for the MiniVIC Apps. Changing the BIOS restarts the machine.'),
+      h('p', { class: 'hint' }, 'A ROM file of 32 KB covers $8000-$FFFF; a shorter one is aligned to the end (vectors at $FFFA). Takes effect at the next reset.'),
 
       h('h3', {}, 'Program in RAM'),
       h('div', { class: 'row' },
@@ -59,17 +69,52 @@ export class MediaPanel {
       h('h3', {}, 'SD card'),
       this.sdInfo,
       this.sdList,
+      h('div', { class: 'row' }, h('label', {}, 'Card type ', this.sdKindSel)),
+      this.sdWarn,
       h('div', { class: 'row' },
         h('button', { type: 'button', onclick: () => this.insertImage() }, 'Insert .img image'),
-        h('button', { type: 'button', onclick: () => emu.loadGamesSd().then(() => emu.setSdImage(emu.sdImage, emu.sdName)) }, 'Games SD'),
+        h('button', { type: 'button', onclick: () => this.defaultSd(() => emu.loadFullSd()) }, 'Full SD'),
+        h('button', { type: 'button', onclick: () => this.defaultSd(() => emu.loadGamesSd()) }, 'Games SD'),
         h('button', { type: 'button', onclick: () => emu.setSdImage(null, '') }, 'Eject'),
-        h('button', { type: 'button', onclick: () => emu.sdImage && download(emu.sdImage, 'sd.img') }, 'Download .img')),
+        h('button', { type: 'button', onclick: () => this.downloadImage() }, 'Download .img')),
+      h('p', { class: 'hint' }, 'The image is extended in memory to 16 MB for the documents of the MiniVIC Apps (from $00800000). Writes are not kept after a page reload: download the image to keep them.'),
       h('h3', {}, 'Build an SD card (like make_sd.py)'),
       h('div', { class: 'row' },
         h('button', { type: 'button', onclick: () => this.addPrograms() }, 'Add .bin programs')),
       this.builder,
     );
+    this.biosSel.addEventListener('change', () => this.biosChanged());
+    this.sdKindSel.addEventListener('change', () => emu.setSdKind(this.sdKindSel.value as SdKind));
     this.update();
+  }
+
+  private biosChanged(): void {
+    const id = this.biosSel.value as BiosId;
+    const rom = ROMS.find(r => r.id === id);
+    if (!rom) return;
+    const apply = () => {
+      this.biosConfirm.hidden = true;
+      this.emu.selectBios(id).catch(e => { this.emu.onMessage(String((e as Error).message), 'error'); this.update(); });
+    };
+    if (!this.emu.powered) return apply();
+    this.biosConfirm.replaceChildren(
+      h('span', {}, `Switch to ${rom.title}? The machine restarts and the program in RAM is lost.`),
+      h('button', { type: 'button', class: 'primary', onclick: apply }, 'Restart'),
+      h('button', { type: 'button', onclick: () => { this.biosConfirm.hidden = true; this.update(); } }, 'Cancel'));
+    this.biosConfirm.hidden = false;
+  }
+
+  /** inserts one of the bundled SD images (Full SD: games + MiniVIC Apps; Games SD: games and songs only) */
+  private defaultSd(load: () => Promise<void>): void {
+    load().then(() => this.emu.setSdImage(this.emu.sdImage, this.emu.sdName))
+      .catch(e => this.emu.onMessage(String((e as Error).message), 'error'));
+  }
+
+  private downloadImage(): void {
+    if (!this.emu.sdImage) return;
+    download(this.emu.sdImage, 'sd.img');
+    this.emu.sdModified = false;
+    this.emu.onState();
   }
 
   private async loadRom(): Promise<void> {
@@ -151,9 +196,19 @@ export class MediaPanel {
   }
 
   update(): void {
-    this.romInfo.textContent = this.emu.romName || 'no ROM';
-    const sd = this.emu.sdImage;
-    this.sdInfo.textContent = sd ? `${this.emu.sdName} · ${(sd.length / 1024).toFixed(0)} KB` : 'no card inserted';
+    const emu = this.emu;
+    this.romInfo.textContent = emu.romName || 'no ROM';
+    if (this.biosConfirm.hidden) {
+      this.biosSel.replaceChildren(
+        ...ROMS.map(r => h('option', { value: r.id, selected: r.id === emu.bios }, r.title)),
+        ...(emu.bios === 'custom' ? [h('option', { value: 'custom', selected: true, disabled: true }, `Custom: ${emu.romName}`)] : []));
+    }
+    this.sdKindSel.value = emu.settings.sdKind;
+    this.sdWarn.hidden = !(emu.settings.sdKind === 'sdhc' && emu.bios === 'std');
+    const sd = emu.sdImage;
+    this.sdInfo.textContent = sd
+      ? `${emu.sdName} · ${(sd.length / 1048576).toFixed(0)} MB${emu.sdModified ? ' · • modified' : ''}`
+      : 'no card inserted';
     this.sdList.replaceChildren(...(sd ? readSdDirectory(sd) : []).map(p =>
       h('li', {}, `${p.name} `, h('span', { class: 'dim' }, `$${hex(p.load, 4)} · ${p.length} B${p.run ? ' · RUN' : ''}`))));
   }

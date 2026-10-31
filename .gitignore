@@ -4,7 +4,7 @@ dist-ssr
 *.local
 *.log
 
-# vecchio codice e file locali
+# old code and local files
 _old/
 /miniVic.bin
 tests/out/

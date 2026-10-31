@@ -170,6 +170,16 @@ export class App {
       if (this.emu.physicalKey(e.code, false, false)) e.preventDefault();
     });
     window.addEventListener('blur', () => this.emu.releaseKeys());
+    // in fullscreen the Keyboard Lock API (Chromium) also lets Ctrl+W/T/N, Ctrl+Tab and F12 reach the emulator
+    document.addEventListener('fullscreenchange', () => {
+      const kl = (navigator as Navigator & { keyboard?: { lock?: () => Promise<void>; unlock?: () => void } }).keyboard;
+      try {
+        if (document.fullscreenElement && this.emu.settings.keyMode === 'ps2') kl?.lock?.().catch(() => {});
+        else kl?.unlock?.();
+      } catch {
+        // not supported: those keys stay with the browser
+      }
+    });
   }
 
   private showTab(id: TabId): void {
@@ -215,6 +225,7 @@ export class App {
     this.displays.bind(emu.machine);
     document.title = `${MACHINE_NAMES[emu.machineId]} · BO6502 Emulator`;
     this.frame();
+    this.slowUpdate();   // the status line too (BIOS, power), even right after the last frame
   }
 
   private frame(): void {
@@ -234,7 +245,7 @@ export class App {
     const m = emu.machine;
     const state = !emu.powered ? 'off' : emu.paused ? 'paused' : `${emu.fps.toFixed(0)} fps`;
     this.status.textContent =
-      `${MACHINE_NAMES[emu.machineId]} · W65C02S ${m.cpuHz / 1e6} MHz · ${state}` +
+      `${MACHINE_NAMES[emu.machineId]} · ${emu.biosLabel} · W65C02S ${m.cpuHz / 1e6} MHz · ${state}` +
       (emu.powered ? ` · PC $${hex(m.cpu.pc, 4)}` : '') +
       (m.vdu ? ` · VDP ${m.vdu.irqLine.toUpperCase()}` : '');
     if (this.tab === 'audio') this.audioPanel.update();
