@@ -17,6 +17,10 @@ export class MediaPanel {
     ...SD_KINDS.map(([k, label]) => h('option', { value: k }, label)));
   private sdWarn = h('p', { class: 'hint warn', hidden: true }, 'SDHC needs BIOS KEYB/SD: the standard BIOS waits for the card forever (like on the real hardware).');
   private sdList = h('ol', { class: 'sd-dir' });
+  private savesInfo = h('div', { class: 'info' });
+  private savesList = h('ul', { class: 'sd-dir' });
+  /** in-page confirmation before the save area is erased */
+  private savesConfirm = h('div', { class: 'confirm', hidden: true });
   private builder = h('div', { class: 'sd-builder' });
   private pending: SdProgram[] = [];
   private readonly emu: Emulator;
@@ -78,6 +82,15 @@ export class MediaPanel {
         h('button', { type: 'button', onclick: () => emu.setSdImage(null, '') }, 'Eject'),
         h('button', { type: 'button', onclick: () => this.downloadImage() }, 'Download .img')),
       h('p', { class: 'hint' }, 'The image is extended in memory to 16 MB for the documents of the MiniVIC Apps (from $00800000). Writes are not kept after a page reload: download the image to keep them.'),
+      h('h3', {}, 'SD save area (game records)'),
+      this.savesInfo,
+      this.savesList,
+      h('div', { class: 'row' },
+        h('button', { type: 'button', onclick: () => this.exportSaves() }, 'Export records'),
+        h('button', { type: 'button', onclick: () => this.importSaves() }, 'Import records'),
+        h('button', { type: 'button', onclick: () => this.clearSaves() }, 'Clear')),
+      this.savesConfirm,
+      h('p', { class: 'hint' }, 'Sectors from 16 MB ($01000000, 2 MB): the games write their records and saved games there with the BIOS KEYB/SD. The area is kept in this browser apart from the SD image, so it survives a new SD; the export is a .json file.'),
       h('h3', {}, 'Build an SD card (like make_sd.py)'),
       h('div', { class: 'row' },
         h('button', { type: 'button', onclick: () => this.addPrograms() }, 'Add .bin programs')),
@@ -115,6 +128,31 @@ export class MediaPanel {
     download(this.emu.sdImage, 'sd.img');
     this.emu.sdModified = false;
     this.emu.onState();
+  }
+
+  private exportSaves(): void {
+    const text = JSON.stringify(this.emu.saves.toJSON(), null, 1);
+    download(new TextEncoder().encode(text), 'minivic_records.json');
+  }
+
+  private async importSaves(): Promise<void> {
+    const [f] = await pickFile('.json');
+    if (!f) return;
+    try {
+      const n = this.emu.saves.fromJSON(JSON.parse(await f.text()));
+      this.emu.onMessage(`${n} sectors of the save area imported`);
+    } catch (e) {
+      this.emu.onMessage(String((e as Error).message), 'error');
+    }
+    this.update();
+  }
+
+  private clearSaves(): void {
+    this.savesConfirm.replaceChildren(
+      h('span', {}, 'Erase every record and saved game of the save area?'),
+      h('button', { type: 'button', class: 'primary', onclick: () => { this.savesConfirm.hidden = true; this.emu.saves.clear(); this.update(); } }, 'Erase'),
+      h('button', { type: 'button', onclick: () => { this.savesConfirm.hidden = true; } }, 'Cancel'));
+    this.savesConfirm.hidden = false;
   }
 
   private async loadRom(): Promise<void> {
@@ -209,6 +247,14 @@ export class MediaPanel {
     this.sdInfo.textContent = sd
       ? `${emu.sdName} · ${(sd.length / 1048576).toFixed(0)} MB${emu.sdModified ? ' · • modified' : ''}`
       : 'no card inserted';
+    const saves = emu.saves, recs = saves.records();
+    this.savesInfo.textContent = `${saves.sectors.size} sectors written · ${recs.length} games with records` +
+      (emu.savesKept ? ' · kept in this browser' : ' · not kept (browser storage unavailable)');
+    this.savesList.replaceChildren(...recs.map(r => {
+      const best = r.rows.find(x => x.name !== '---');
+      return h('li', {}, `${r.game || 'zone ' + r.zone} `,
+        h('span', { class: 'dim' }, best ? `${best.name} ${best.score}` : 'no records yet'));
+    }));
     this.sdList.replaceChildren(...(sd ? readSdDirectory(sd) : []).map(p =>
       h('li', {}, `${p.name} `, h('span', { class: 'dim' }, `$${hex(p.load, 4)} · ${p.length} B${p.run ? ' · RUN' : ''}`))));
   }

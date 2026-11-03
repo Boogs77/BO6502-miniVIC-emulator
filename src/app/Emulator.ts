@@ -15,6 +15,8 @@ import { buildSdImage, extendSdImage, SdProgram } from '../machines/sdimage';
 import { GAMES, GAME_ENTRY, GAME_LOAD } from '../machines/games';
 import { BiosId, ROMS } from '../machines/roms';
 import { SdKind } from '../devices/SDCard';
+import { SaveArea } from '../devices/SaveArea';
+import { attachSaveStore } from './saveStore';
 import { loadSettings, saveSettings, Settings } from './settings';
 import { BoardType } from '../core/Board';
 
@@ -47,6 +49,10 @@ export class Emulator {
   sdName = '';
   /** the card was written since it was inserted or downloaded */
   sdModified = false;
+  /** SD save area (records, saved games): apart from the image, kept in the browser */
+  readonly saves = new SaveArea();
+  /** the save area is kept in the browser (false: lost on reload) */
+  savesKept = false;
 
   /** called on every emulated and displayed frame */
   onFrame: () => void = () => {};
@@ -83,6 +89,9 @@ export class Emulator {
   /** loads the chosen BIOS and the default SD card (at startup) */
   async init(): Promise<void> {
     await this.loadRom(this.settings.bios).catch(() => this.loadRom('std'));
+    this.savesKept = await attachSaveStore(this.saves).catch(() => false);
+    const keep = this.saves.onWrite;
+    this.saves.onWrite = sector => { keep(sector); this.onState(); };
     await this.loadFullSd().catch(() => this.loadGamesSd())
       .catch(() => this.onMessage('Default games not found', 'error'));
     this.rebuild();
@@ -180,6 +189,7 @@ export class Emulator {
     if (sd) {
       sd.card.kind = this.settings.sdKind;
       sd.card.onWrite = () => this.sdWritten();
+      sd.card.saveArea = this.saves;
       sd.card.insert(this.sdImage);
     }
     const serial = this.machine.board<SerialBoard>('serial');

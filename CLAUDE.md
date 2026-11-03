@@ -108,6 +108,11 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
 - The standard 24.10.26 has no SD timeout: with an SDHC card (or no card) it waits forever on ACMD41, like the real one.
 - SD images are extended in memory to 16 MB (document area of the MiniVIC Apps at sector 16384); writes are lost on
   reload unless the user downloads the image (user's decision 2026-10-27: no browser persistence).
+- Exception (user's decision 2026-11-03): the **save area** (sectors 32768-36863, from 16 MB: game records and saved
+  games, 256 zones of 16 sectors) lives outside the image in `SaveArea` (`src/devices/SaveArea.ts`), attached to the
+  card, and is kept in IndexedDB by `src/app/saveStore.ts`, so it survives reloads and new default SDs. Media panel:
+  export/import as `.json` (`format: "minivic-saves"`, same file as `saves.py` of bo6502-SDbuilder), clear.
+  Spec shared by all the miniVIC projects (local, not in git): `../SD_SALVATAGGI.md`. Test: `tests/saves.test.ts`.
 - 24.10.26 (firmware 024): the SD menu flushes the keyboard after drawing a page, so the release of A/D
   (whose F0 byte is overwritten during the slow SD read) is no longer read as a second page change.
 - Vectors: RESET `$E000` (menu), NMI `$A785` → `PHA PHX PHY / JSR $0FD0 / LDA $B001 / PLY PLX PLA / RTI`,
