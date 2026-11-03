@@ -201,6 +201,7 @@ button.icon { padding: 6px 10px; }
 .game-n { font-family: var(--mono); color: var(--accent); }
 .game-title { font-weight: 600; }
 .game-players { color: var(--dim); font-size: 12px; }
+.app-desc { grid-column: 2 / -1; color: var(--dim); font-size: 12px; }
 .keys-help { display: grid; gap: 4px; font-size: 12.5px; color: var(--dim); background: var(--bg-2); border-radius: 6px; padding: 8px 10px; }
 .keys-help b { color: var(--text); font-weight: 600; margin-right: 6px; }
 

@@ -502,6 +502,21 @@ export class Emulator {
     this.loadProgram(new Uint8Array(await r.arrayBuffer()), GAME_LOAD, GAME_ENTRY);
   }
 
+  /** miniVIC application: needs the KEYB/SD BIOS (sector routines, extended keyboard); keys on the PS/2 keyboard */
+  async runApp(file: string): Promise<void> {
+    const r = await fetch(`./apps/${file}`);
+    if (!r.ok) throw new Error(`${file} not found`);
+    const data = new Uint8Array(await r.arrayBuffer());
+    if (this.machineId !== 'minivic') this.selectMachine('minivic');
+    if (this.bios !== 'keybsd') {
+      await this.selectBios('keybsd');
+      this.powerOff();   // loadProgram powers on and waits for the new BIOS to initialise the boards
+      this.onMessage('The applications need the KEYB/SD BIOS: BIOS changed');
+    }
+    this.setKeyMode('ps2');
+    this.loadProgram(data, GAME_LOAD, GAME_ENTRY);
+  }
+
   /** demo of a BO6502 board: plugs the board into the rack (if needed) and starts the program at $1000 */
   async runDemo(file: string, board: BoardType): Promise<void> {
     const r = await fetch(`./demos/${file}`);
