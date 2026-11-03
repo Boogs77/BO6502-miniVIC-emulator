@@ -21,7 +21,7 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 * **Accurate TMS9918A**: scanline renderer, all video modes, 32 sprites with the 4-per-line limit, 5th sprite flag, collisions, early clock, magnification, real port latch/read-ahead behaviour and vblank interrupt.
 * **True stereo audio**: two **AY-3-8910** emulated at counter level (tone, 17-bit noise LFSR, 16 envelope shapes, measured logarithmic DAC), cycle-synchronised with the CPU and played through Web Audio.
 * **Clickable input**: PS/2 keyboard and two Sega Master System joysticks drawn on screen, usable with mouse or touch; physical keyboard and gamepads work too.
-* **SD card**: SPI bit-banged SD emulation of SDSC v1, SDSC v2 and SDHC cards, read and write, a 16 MB document area, `.img` upload/download and an SD image builder compatible with `make_sd.py`.
+* **SD card**: SPI bit-banged SD emulation of SDSC v1, SDSC v2 and SDHC cards, read and write, a 16 MB document area, a save area for game records kept in the browser (export/import as `.json`), `.img` upload/download and an SD image builder compatible with `make_sd.py`.
 * **Display boards**: Big LCD T6963 (160x128 graphics and text), legacy HD44780 16x2 LCD and the 16-LED test board, each with a ready-to-run demo.
 * **Debugger**: CPU registers, disassembly, step / frame, breakpoints, memory and VRAM viewer, VDP, VIA and AY registers.
 

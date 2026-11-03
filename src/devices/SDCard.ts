@@ -12,6 +12,10 @@
 //            and CMD17/CMD24 take a sector number; CMD16 is accepted and ignored
 // Like real cards, two $FF bytes come before R1 and before the $FE data token, and a write
 // keeps MISO low (busy) for a few bytes after the data response.
+// Sectors of the save area (from 16 MB, see SaveArea.ts) go to the attached SaveArea, also past the
+// end of the image; without a SaveArea they are read and written in the image like any other sector.
+
+import { SaveArea } from './SaveArea';
 
 const BLOCK = 512;
 
@@ -28,6 +32,8 @@ export class SDCard {
   onWrite: () => void = () => {};
   /** card type (default: SDSC v1, the card the standard BIOS was written for) */
   kind: SdKind = 'sdsc-v1';
+  /** save area kept apart from the image (null = the image holds every sector) */
+  saveArea: SaveArea | null = null;
 
   private cs = 1;
   private sck = 0;
@@ -43,6 +49,7 @@ export class SDCard {
   private hcsSeen = false;
   // block write (CMD24)
   private writeAddr = -1;
+  private writeSave = false;
   private writeBuf: number[] = [];
   private writing = false;
 
@@ -109,10 +116,20 @@ export class SDCard {
     this.outQueue = [0xFF, 0xFF, ...bytes];   // two wait bytes (NCR) before the response
   }
 
-  /** byte address of a CMD17/CMD24 argument (-1 = out of range or misaligned) */
+  /** byte address of a CMD17/CMD24 argument (-1 = misaligned) */
   private address(arg: number): number {
     const a = this.kind === 'sdhc' ? arg * BLOCK : arg;
-    return a % BLOCK || a + BLOCK > this.image!.length ? -1 : a;
+    return a % BLOCK ? -1 : a;
+  }
+
+  /** true if the block at byte address a belongs to the attached save area */
+  private inSaveArea(a: number): boolean {
+    return this.saveArea !== null && SaveArea.contains(a / BLOCK);
+  }
+
+  /** true if the block at byte address a exists (in the image or in the save area) */
+  private exists(a: number): boolean {
+    return a >= 0 && (this.inSaveArea(a) || a + BLOCK <= this.image!.length);
   }
 
   private r1(): number {
@@ -160,16 +177,17 @@ export class SDCard {
       case 17: {
         if (this.idle) { this.respond(0x01); break; }
         const a = this.address(arg);
-        if (a < 0) { this.respond(0x40); break; } // parameter error
-        const data = Array.from(img.subarray(a, a + BLOCK));
+        if (!this.exists(a)) { this.respond(0x40); break; } // parameter error
+        const data = Array.from(this.inSaveArea(a) ? this.saveArea!.read(a / BLOCK) : img.subarray(a, a + BLOCK));
         this.outQueue = [0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFE, ...data, 0xFF, 0xFF];
         break;
       }
       case 24: {
         if (this.idle) { this.respond(0x01); break; }
         const a = this.address(arg);
-        if (a < 0) { this.respond(0x40); break; }
+        if (!this.exists(a)) { this.respond(0x40); break; }
         this.writeAddr = a;
+        this.writeSave = this.inSaveArea(a);
         this.writeBuf = [];
         this.writing = true;
         this.respond(0x00);
@@ -184,10 +202,15 @@ export class SDCard {
     if (this.writeBuf.length === 0 && b !== 0xFE) return; // waiting for the data token
     this.writeBuf.push(b);
     if (this.writeBuf.length === 1 + BLOCK + 2) {
-      this.image!.set(this.writeBuf.slice(1, 1 + BLOCK), this.writeAddr);
+      const data = this.writeBuf.slice(1, 1 + BLOCK);
       this.writing = false;
       this.outQueue = [0xE5, 0x00, 0x00, 0x00, 0x00, 0xFF]; // data accepted (xxx00101), then busy
-      this.onWrite();
+      if (this.writeSave) {
+        this.saveArea!.write(this.writeAddr / BLOCK, data);
+      } else {
+        this.image!.set(data, this.writeAddr);
+        this.onWrite();
+      }
     }
   }
 }
