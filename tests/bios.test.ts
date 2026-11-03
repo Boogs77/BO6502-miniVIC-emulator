@@ -1,4 +1,4 @@
-// The two miniVIC BIOS images (standard 24.10.26 and KEYB/SD 27.10.26) on the three SD card types,
+// The two miniVIC BIOS images (standard 24.10.26 and KEYB/SD 27.10.26 or later) on the three SD card types,
 // the extended keyboard of KEYB/SD, the BIOS/SD settings and the keys the browser must not keep.
 // The KEYB/SD jump table is driven by tests/fixtures/asm/bios_mailbox.bin (at $1000): the test writes a
 // command in $0FF0 (1 read sector, 2 write sector, 3 SD init, 4 extended keyboard, 5 classic keyboard),
@@ -50,6 +50,14 @@ function tap(m: Machine, code: string, mods: string[] = []): void {
   for (const k of mods) { kb.keyUp(k); runFrames(m, 2); }
 }
 
+// KEYB/SD BIOS from 03-11-2026: key 3 first shows GAMES / APPS / SOUNDS / ALL. '4' (ALL) gives the
+// SD pages as they are, the list of the older BIOS, which goes there directly.
+function openAllList(m: Machine): void {
+  if (!screenText(m).includes('4. ALL PROGRAMS')) return;
+  tap(m, 'Digit4'); runFrames(m, 150);
+  assert(screenText(m).includes('SD ALL PROGRAMS'), 'ALL list not found\n' + screenText(m));
+}
+
 function startMailbox(m: Machine): void {
   m.ram[0x0FA0] = 0x60;   // RTS in the IRQ and NMI trampolines
   m.ram[0x0FD0] = 0x60;
@@ -72,11 +80,11 @@ function setLba(m: Machine, lba: number): void {
 
 // ---------------------------------------------------------------- 1, 2: menu, BASIC, WozMon
 function bootAll(): void {
-  for (const [id, ver] of [['std', '24.10.26'], ['keybsd', '27.10.26 KEYB/SD']]) {
+  for (const [id, ver] of [['std', '24\\.10\\.26'], ['keybsd', '\\d\\d\\.\\d\\d\\.\\d\\d KEYB/SD']]) {   // KEYB/SD: any version (27.10.26, 03.11.26, ...)
     const m = machine(id, 'sdsc-v1', null);
     const menu = screenText(m);
     savePng(m, `bios_${id}_menu`);
-    assert(menu.includes('SDCARD PROGRAMS MENU') && menu.includes(`BIOS Version ${ver}`), `${id}: main menu\n${menu}`);
+    assert(menu.includes('SDCARD PROGRAMS MENU') && new RegExp(`BIOS Version ${ver}`).test(menu), `${id}: main menu\n${menu}`);
 
     tap(m, 'Digit2'); runFrames(m, 120);
     // MEMORY SIZE? and TERMINAL WIDTH?: Enter until BASIC answers
@@ -146,6 +154,7 @@ function sdSuite(kind: SdKind, expectType: number): void {
   tap(m, 'Digit3'); runFrames(m, 150);
   const menu = screenText(m);
   assert(menu.includes('SD PROGRAMS MENU'), `${kind}: SD menu not found\n${menu}`);
+  openAllList(m);
   tap(m, 'Digit2');
   let t = 0;
   while (m.cpu.pc >= 0x8000 && t < 1500) { runFrames(m, 10); t += 10; }
@@ -221,6 +230,7 @@ function fullSd(): void {
   assert(String.fromCharCode(...img.subarray(0x00800000, 0x00800004)) === 'DOCS', 'full SD without the document index');
   const m = machine('keybsd', 'sdsc-v1', img);
   tap(m, 'Digit3'); runFrames(m, 150);
+  openAllList(m);
   for (let p = 0; p < Math.floor(idx / 9); p++) { tap(m, 'KeyD'); runFrames(m, 150); }
   const menu = screenText(m);
   assert(/WRITE - APP/i.test(menu), 'SD menu page with Write not found\n' + menu);
