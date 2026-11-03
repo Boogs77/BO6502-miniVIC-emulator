@@ -17,7 +17,7 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 
 * **Two machines**: switch between **BO6502** (configurable rack) and **miniVIC** (fixed layout) with one click.
 * **Real BIOS**: boots the miniVIC BIOS **27.10.26 KEYB/SD** (extended keyboard, SDHC cards, sector read/write) or the standard 24.10.26 (WozMon, Microsoft BASIC 1977, SD programs menu), selectable in the Media panel.
-* **Full SD by default**: all the miniVIC games, the [MiniVIC Apps](https://github.com/Boogs77/miniVIC_apps) (Write, Calc, File, Desk, Term, Asm, Mon, Disk), songs and sample documents, ready in the SD menu (key `3`).
+* **Full SD by default**: all the miniVIC games, the [MiniVIC Apps](https://github.com/Boogs77/miniVIC_apps) (Write, Calc, File, Desk, Term, Asm, Mon, Disk), songs and sample documents, ready in the SD menu (key `3`). The **Games** and **Apps** panels also start every game and application with one click.
 * **Accurate TMS9918A**: scanline renderer, all video modes, 32 sprites with the 4-per-line limit, 5th sprite flag, collisions, early clock, magnification, real port latch/read-ahead behaviour and vblank interrupt.
 * **True stereo audio**: two **AY-3-8910** emulated at counter level (tone, 17-bit noise LFSR, 16 envelope shapes, measured logarithmic DAC), cycle-synchronised with the CPU and played through Web Audio.
 * **Clickable input**: PS/2 keyboard and two Sega Master System joysticks drawn on screen, usable with mouse or touch; physical keyboard and gamepads work too.
@@ -84,7 +84,7 @@ The test suite runs the real BIOS headless, loads a game from the emulated SD ca
 | `src/boards` | BO6502 / miniVIC boards and their address decoding |
 | `src/core` | bus, interrupts, NTSC frame timing |
 | `src/ui` | screen, terminal, virtual keyboard, joysticks, panels |
-| `public` | default ROM and games |
+| `public` | default ROMs, games, applications and SD images |
 
 ---
 
@@ -92,6 +92,7 @@ The test suite runs the real BIOS headless, loads a game from the emulated SD ca
 
 * **BO6502 System:** [65C02-based Modular Computer](https://github.com/Boogs77/BO6502_65C02-based_modular_computer)
 * **miniVIC Games:** [65C02 Arcade Collection](https://github.com/Boogs77/miniVIC_games)
+* **miniVIC Apps:** [Office applications for the miniVIC](https://github.com/Boogs77/miniVIC_apps)
 * **miniPET:** [The sister project](https://github.com/Boogs77/miniPET_65c02)
 * **CPU tests:** [Klaus Dormann 6502/65C02 functional tests](https://github.com/Klaus2m5/6502_65C02_functional_tests)
 

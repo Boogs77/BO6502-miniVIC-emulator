@@ -1,0 +1,169 @@
+#!/usr/bin/env node
+// sync-apps.mjs - brings the applications of the miniVIC_apps project into the emulator
+//
+//   node scripts/sync-apps.mjs            copies new or changed apps and regenerates src/machines/apps.ts
+//   node scripts/sync-apps.mjs --check    check only: exit 0 = in sync, 2 = there are differences
+//   --source <folder>                     folder of the apps project (default: MINIVIC_APPS_DIR,
+//                                         then "../MiniVIC Apps" next to this repository)
+//   --github                              reads from github.com/Boogs77/miniVIC_apps instead of locally
+//   --prune                               also removes the apps that no longer exist in the source
+//   --json                                prints the summary as JSON
+//
+// Source: bin/<app>.bin (loaded at $0FD0, started at $1000, BIOS KEYB/SD) and the README table:
+//   | ✍️ [**miniVIC WRITE**](#...) | `bin/write.bin` | APP | Text editor in the WordStar style |
+// The app order is the README order; apps without a README row go last.
+
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const APPS_DIR = join(ROOT, 'public', 'apps');
+const APPS_TS = join(ROOT, 'src', 'machines', 'apps.ts');
+const REPO = 'Boogs77/miniVIC_apps';
+
+const args = process.argv.slice(2);
+const flag = f => args.includes(f);
+const opt = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
+const check = flag('--check');
+
+const sha = data => createHash('sha1').update(data).digest('hex');
+
+/** titles, types and descriptions from the table in the apps README */
+function parseReadme(text) {
+  const meta = new Map();
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\|[^|]*\*\*(.+?)\*\*[^|]*\|\s*`bin\/([\w-]+)\.bin`\s*\|\s*(\w+)\s*\|\s*([^|]+?)\s*\|/);
+    if (m) meta.set(m[2], { title: m[1].trim(), type: m[3].toUpperCase(), description: m[4].trim() });
+  }
+  return meta;
+}
+
+/** source apps: [{ name, data, title, type, description }] in README order */
+async function readSource() {
+  let readme = '';
+  const bins = new Map();
+  if (flag('--github')) {
+    const api = `https://api.github.com/repos/${REPO}/contents`;
+    const headers = { 'User-Agent': 'bo6502-emulator-sync' };
+    if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    const list = await (await fetch(`${api}/bin`, { headers })).json();
+    if (!Array.isArray(list)) throw new Error(`GitHub: ${list.message ?? 'unexpected response'}`);
+    for (const f of list.filter(f => f.name.endsWith('.bin'))) {
+      const r = await fetch(f.download_url, { headers });
+      bins.set(f.name.replace(/\.bin$/, ''), new Uint8Array(await r.arrayBuffer()));
+    }
+    readme = await (await fetch(`https://raw.githubusercontent.com/${REPO}/main/README.md`, { headers })).text();
+  } else {
+    const src = opt('--source') ?? process.env.MINIVIC_APPS_DIR ?? join(ROOT, '..', 'MiniVIC Apps');
+    if (!existsSync(join(src, 'bin'))) throw new Error(`apps folder not found: ${src} (use --source or --github)`);
+    for (const f of readdirSync(join(src, 'bin')).filter(f => f.endsWith('.bin'))) {
+      bins.set(f.replace(/\.bin$/, ''), new Uint8Array(readFileSync(join(src, 'bin', f))));
+    }
+    if (existsSync(join(src, 'README.md'))) readme = readFileSync(join(src, 'README.md'), 'utf8');
+  }
+  const meta = parseReadme(readme);
+  const order = [...meta.keys()].filter(n => bins.has(n));
+  const rest = [...bins.keys()].filter(n => !meta.has(n)).sort();
+  return [...order, ...rest].map(name => ({
+    name,
+    data: bins.get(name),
+    title: meta.get(name)?.title ?? `miniVIC ${name.toUpperCase()}`,
+    type: meta.get(name)?.type ?? 'APP',
+    description: meta.get(name)?.description ?? '',
+  }));
+}
+
+/** current emulator apps (from apps.ts) */
+function readCurrent() {
+  const text = existsSync(APPS_TS) ? readFileSync(APPS_TS, 'utf8') : '';
+  const list = [];
+  const str = "'((?:[^'\\\\]|\\\\.)*)'";
+  const re = new RegExp(`\\{\\s*file:\\s*'([\\w-]+)\\.bin',\\s*title:\\s*${str},\\s*type:\\s*'(\\w+)',\\s*description:\\s*${str}\\s*\\}`, 'g');
+  const un = s => s.replace(/\\(.)/g, '$1');
+  for (const m of text.matchAll(re)) {
+    const file = join(APPS_DIR, `${m[1]}.bin`);
+    list.push({
+      name: m[1], title: un(m[2]), type: m[3], description: un(m[4]),
+      hash: existsSync(file) ? sha(readFileSync(file)) : null,
+    });
+  }
+  return list;
+}
+
+function renderAppsTs(apps) {
+  const esc = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return `// Bundled miniVIC applications (public/apps, from github.com/${REPO})
+// Every .bin starts at $0FD0 (NMI trampoline) and the program at $1000; they need the BIOS KEYB/SD.
+// List generated by scripts/sync-apps.mjs: do not edit it by hand.
+
+export interface AppInfo {
+  file: string;
+  title: string;
+  type: string;
+  description: string;
+}
+
+export const APPS: AppInfo[] = [
+${apps.map(a => `  { file: '${a.name}.bin', title: '${esc(a.title)}', type: '${a.type}', description: '${esc(a.description)}' },`).join('\n')}
+];
+`;
+}
+
+async function main() {
+  const source = await readSource();
+  const current = readCurrent();
+  const cur = new Map(current.map(a => [a.name, a]));
+  const src = new Map(source.map(a => [a.name, a]));
+
+  const added = source.filter(a => !cur.has(a.name));
+  const updated = source.filter(a => cur.has(a.name) && cur.get(a.name).hash !== sha(a.data));
+  const renamed = source.filter(a => cur.has(a.name) && ['title', 'type', 'description'].some(k => cur.get(a.name)[k] !== a[k]));
+  const missing = current.filter(a => !src.has(a.name));
+  const removed = flag('--prune') ? missing : [];
+
+  // final order: the source order; apps removed from the source stay at the end (unless --prune)
+  const final = [...source, ...missing.filter(a => !removed.includes(a))];
+  const changed = added.length + updated.length + renamed.length + removed.length > 0 ||
+    final.map(a => a.name).join() !== current.map(a => a.name).join();
+
+  const summary = {
+    changed,
+    added: added.map(a => `${a.name} (${a.title})`),
+    updated: updated.map(a => a.name),
+    renamed: renamed.map(a => `${a.name}: ${a.title}`),
+    removed: removed.map(a => a.name),
+    onlyInEmulator: missing.filter(a => !removed.includes(a)).map(a => a.name),
+    total: final.length,
+  };
+
+  if (!check && changed) {
+    mkdirSync(APPS_DIR, { recursive: true });
+    for (const a of [...added, ...updated]) writeFileSync(join(APPS_DIR, `${a.name}.bin`), a.data);
+    for (const a of removed) {
+      const f = join(APPS_DIR, `${a.name}.bin`);
+      if (existsSync(f)) unlinkSync(f);
+    }
+    writeFileSync(APPS_TS, renderAppsTs(final));
+  }
+
+  if (flag('--json')) {
+    console.log(JSON.stringify(summary, null, 2));
+  } else {
+    const line = (label, list) => list.length && console.log(`${label}: ${list.join(', ')}`);
+    if (!changed) console.log(`Apps already in sync (${summary.total}).`);
+    else console.log(check ? 'There are differences:' : `Apps synced (${summary.total}):`);
+    line('  new', summary.added);
+    line('  updated', summary.updated);
+    line('  details changed', summary.renamed);
+    line('  removed', summary.removed);
+    line('  only in the emulator (not removed, use --prune)', summary.onlyInEmulator);
+  }
+  process.exit(check && changed ? 2 : 0);
+}
+
+main().catch(e => {
+  console.error(`sync-apps: ${e.message}`);
+  process.exit(1);
+});
