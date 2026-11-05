@@ -91,6 +91,7 @@ The test suite runs the real BIOS headless, loads a game from the emulated SD ca
 ## 🔗 Useful Links & Resources
 
 * **BO6502 System:** [65C02-based Modular Computer](https://github.com/Boogs77/BO6502_65C02-based_modular_computer)
+* **miniVIC:** [65C02-based arcade computer (hardware)](https://github.com/Boogs77/miniVIC_65c02)
 * **miniVIC Games:** [65C02 Arcade Collection](https://github.com/Boogs77/miniVIC_games)
 * **miniVIC Apps:** [Office applications for the miniVIC](https://github.com/Boogs77/miniVIC_apps)
 * **miniPET:** [The sister project](https://github.com/Boogs77/miniPET_65c02)
