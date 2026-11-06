@@ -37,6 +37,7 @@ export const GAMES: GameInfo[] = [
   { file: 'core_runner.bin', title: 'Core Runner', players: '1-2' },
   { file: 'deep_space_miner.bin', title: 'Deep Space Miner', players: '1-2' },
   { file: 'dune_ranger.bin', title: 'Dune Ranger', players: '1-2' },
+  { file: 'sky_tug.bin', title: 'Sky Tug', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
