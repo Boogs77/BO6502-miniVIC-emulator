@@ -40,6 +40,7 @@ export const GAMES: GameInfo[] = [
   { file: 'sky_tug.bin', title: 'Sky Tug', players: '1-2' },
   { file: 'super_carlo.bin', title: 'Super Carlo', players: '1-2' },
   { file: 'ghost_ghust.bin', title: 'Ghost & Ghust', players: '1-2' },
+  { file: 'wormer.bin', title: 'Wormer', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
