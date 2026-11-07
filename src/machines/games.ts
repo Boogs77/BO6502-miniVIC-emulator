@@ -42,6 +42,7 @@ export const GAMES: GameInfo[] = [
   { file: 'ghost_ghust.bin', title: 'Ghost & Ghust', players: '1-2' },
   { file: 'wormer.bin', title: 'Wormer', players: '1-2' },
   { file: 'sky_squirrel.bin', title: 'Sky Squirrel', players: '1-2' },
+  { file: 'room.bin', title: 'Room', players: '1' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
