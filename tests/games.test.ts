@@ -17,7 +17,8 @@ export default async function () {
     m.cpu.sp = 0xFF;
     runFrames(m, 450);
     savePng(m, 'title_' + g.file.replace('.bin', ''));
-    const colors = new Set(m.vdu!.vdp.frame);
-    assert(colors.size >= 3, `${g.title}: empty title screen (${colors.size} colours)`);
+    const vdp = m.vdu!.vdp, colors = new Set(vdp.frame);
+    const min = vdp.reg[1] & 0x10 ? 2 : 3;               // text mode (the miniVIC Z-Machine): 2 colours at most
+    assert(colors.size >= min, `${g.title}: empty title screen (${colors.size} colours)`);
   }
 }
