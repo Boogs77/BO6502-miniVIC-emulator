@@ -43,6 +43,12 @@ export const GAMES: GameInfo[] = [
   { file: 'wormer.bin', title: 'Wormer', players: '1-2' },
   { file: 'sky_squirrel.bin', title: 'Sky Squirrel', players: '1-2' },
   { file: 'room.bin', title: 'Room', players: '1' },
+  { file: 'zork1_kb.bin', title: 'Zork I (keyboard)', players: '1' },
+  { file: 'zork1_joy.bin', title: 'Zork I (joystick)', players: '1' },
+  { file: 'zork2_kb.bin', title: 'Zork II (keyboard)', players: '1' },
+  { file: 'zork2_joy.bin', title: 'Zork II (joystick)', players: '1' },
+  { file: 'zork3_kb.bin', title: 'Zork III (keyboard)', players: '1' },
+  { file: 'zork3_joy.bin', title: 'Zork III (joystick)', players: '1' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
