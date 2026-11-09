@@ -53,6 +53,7 @@ export const GAMES: GameInfo[] = [
   { file: 'little_6502_guy.bin', title: 'Little 6502 Guy', players: '1' },
   { file: 'hedge_hop.bin', title: 'Hedge Hop', players: '1-2' },
   { file: 'mole_hole.bin', title: 'Mole Hole', players: '1-2' },
+  { file: 'lighthouse_keeper.bin', title: 'Lighthouse Keeper', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
