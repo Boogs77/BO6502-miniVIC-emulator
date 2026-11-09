@@ -51,6 +51,7 @@ export const GAMES: GameInfo[] = [
   { file: 'zork3_joy.bin', title: 'Zork III (joystick)', players: '1' },
   { file: 'robo_vac.bin', title: 'Robo Vac', players: '1-2' },
   { file: 'little_6502_guy.bin', title: 'Little 6502 Guy', players: '1' },
+  { file: 'hedge_hop.bin', title: 'Hedge Hop', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
