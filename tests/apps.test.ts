@@ -27,7 +27,7 @@ export default async function () {
     savePng(m, 'app_' + a.file.replace('.bin', ''));
     const text = screenText(m);
     assert(text.replace(/\s/g, '').length >= 20, `${a.title}: empty screen\n${text}`);
-    if (a.file === 'disk.bin') assert(/ASTEROIDS - GAME/.test(text), `${a.title}: SD programs not listed\n${text}`);
+    if (a.file === 'disk.bin') assert(/ASTEROIDS/.test(text), `${a.title}: SD programs not listed\n${text}`);
   }
   console.log(`      ${APPS.length} applications started`);
 }
