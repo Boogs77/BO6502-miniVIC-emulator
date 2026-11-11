@@ -58,6 +58,7 @@ export const GAMES: GameInfo[] = [
   { file: 'lix.bin', title: 'Lix', players: '1-2' },
   { file: 'cheese_chase.bin', title: 'Cheese Chase', players: '1-2' },
   { file: 'haunted_keep.bin', title: 'Haunted Keep', players: '1-2' },
+  { file: 'pastry_panic.bin', title: 'Pastry Panic', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
