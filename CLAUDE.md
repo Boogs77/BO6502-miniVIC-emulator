@@ -145,13 +145,8 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
   registers and notes of the two AYs, per-channel mute), Serial ('crt' or 'ansi' layout), Debug (CPU, disassembly,
   step/frame, breakpoints, CPU/VRAM memory, VDP, VIA).
 
-## To do (next steps)
-- Missing boards: keyboard of the legacy LCD board, Monitor (Arduino Mega sniffer).
-- T6963: text attribute mode, screen peek/copy, 6x8 font (FS = 1); HD44780: real busy timings, Japanese A00 CGROM.
-- Check on the schematics: AY register reads, BO6502 audio board decoding (the module README says
-  A0 = BC1, A1 = BDIR, A2 = 0 left, different from the miniVIC), IRQ line of ACIA/VIA.
-- Save/restore state, TMS VRAM timing (accesses too close together).
-- KEYB/SD: automatic BIOS choice per program and a `?bios=` URL parameter (left out on purpose, 2026-10-27).
+## To do
+- The list of next steps is in `docs/TODO.md` (in order of priority): update it there, not here.
 
 ## Rules
 - Before changing the CPU, VDP or AY run `npm test` and look at the screenshots in `tests/out/`.
