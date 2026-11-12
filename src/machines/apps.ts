@@ -18,4 +18,5 @@ export const APPS: AppInfo[] = [
   { file: 'mon.bin', title: 'miniVIC MON', type: 'TOOL', description: 'Machine language monitor in the Supermon style' },
   { file: 'disk.bin', title: 'miniVIC DISK', type: 'TOOL', description: 'SD card manager: programs and documents' },
   { file: 'asm.bin', title: 'miniVIC ASM', type: 'TOOL', description: 'Two-pass 65C02 assembler' },
+  { file: 'jukebox.bin', title: 'miniVIC JUKEBOX', type: 'APP', description: 'Music player: 16 songs on the two AY-3-8910, random play' },
 ];

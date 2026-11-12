@@ -43,7 +43,7 @@ public/sd.img           default SD, copied here by ../bo6502-SDbuilder/update_sd
                         sd_full.img.gz is missing; without it, loadGamesSd builds the SD from GAMES.
                         Do not edit it here: the SD online must stay identical to the one bo6502-SDbuilder generates
 public/apps/*.bin       MiniVIC Apps (github.com/Boogs77/miniVIC_apps, local ../MiniVIC Apps): loaded at $0FD0, started at
-                        $1000, need the KEYB/SD BIOS (the Apps panel switches to it). Sync: node scripts/sync-apps.mjs
+                        $1000, need the KEYB/SD BIOS (the Apps panel switches to it). jukebox.bin uses the joystick (JOYSTICK_APPS in Emulator.ts). Sync: node scripts/sync-apps.mjs
                         [--check] [--github] [--prune]; titles, type and description from the README table
 public/songs/*.bin      the songs on that SD (loaded at $1000), copied by update_sd.py from bo6502-SDbuilder/songs
 public/demos/*.bin      board demos (sources in tests/fixtures/asm, assembled with vasm)

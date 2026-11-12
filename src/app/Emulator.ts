@@ -30,6 +30,9 @@ const JOY_KEYS: Record<string, [number, number]> = {
   KeyF: [1, JOY_FIRE1], KeyG: [1, JOY_FIRE2],
 };
 
+/** miniVIC applications played with the joystick, not the PS/2 keyboard (the keys go to the joystick) */
+const JOYSTICK_APPS = new Set(['jukebox.bin']);
+
 export class Emulator {
   machine: Machine;
   config: MachineConfig;
@@ -523,7 +526,7 @@ export class Emulator {
       this.powerOff();   // loadProgram powers on and waits for the new BIOS to initialise the boards
       this.onMessage('The applications need the KEYB/SD BIOS: BIOS changed');
     }
-    this.setKeyMode('ps2');
+    this.setKeyMode(JOYSTICK_APPS.has(file) ? 'joy' : 'ps2');
     this.loadProgram(data, GAME_LOAD, GAME_ENTRY);
   }
 
