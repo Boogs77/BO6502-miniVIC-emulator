@@ -225,7 +225,7 @@ function fullSd(): void {
       names.push(String.fromCharCode(...img.subarray(o, img.indexOf(0, o))));
     }
   }
-  const idx = names.findIndex(n => /^WRITE - APP$/i.test(n));
+  const idx = names.findIndex(n => /^WRITE\s+- APP$/i.test(n));
   assert(idx >= 0, 'full SD without the Write application: ' + names.join(', '));
   assert(String.fromCharCode(...img.subarray(0x00800000, 0x00800004)) === 'DOCS', 'full SD without the document index');
   const m = machine('keybsd', 'sdsc-v1', img);
@@ -233,7 +233,7 @@ function fullSd(): void {
   openAllList(m);
   for (let p = 0; p < Math.floor(idx / 9); p++) { tap(m, 'KeyD'); runFrames(m, 150); }
   const menu = screenText(m);
-  assert(/WRITE - APP/i.test(menu), 'SD menu page with Write not found\n' + menu);
+  assert(/WRITE\s+- APP/i.test(menu), 'SD menu page with Write not found\n' + menu);
   tap(m, `Digit${idx % 9 + 1}`);
   let t = 0;
   while (m.cpu.pc >= 0x8000 && t < 1500) { runFrames(m, 10); t += 10; }
