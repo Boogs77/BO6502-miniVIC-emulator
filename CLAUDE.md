@@ -49,6 +49,7 @@ public/songs/*.bin      the songs on that SD (loaded at $1000), copied by update
 public/demos/*.bin      board demos (sources in tests/fixtures/asm, assembled with vasm)
 scripts/sync-games.mjs  games sync from miniVIC_games
 scripts/sync-apps.mjs   apps sync from miniVIC_apps
+scripts/sync-music.mjs  song list of the Music panel (src/machines/music.ts) from the README of miniVIC_music
 .github/workflows/      pages.yml (build and deploy on GitHub Pages), sync-games.yml (daily games and BIOS sync)
 .claude/                settings.json (SessionStart hook), skills/sync-minivic-games
 tests/                  run.mjs (runner), cpu/devices/displays/games/apps/minivic/serial.test.ts, helpers.ts
@@ -63,7 +64,8 @@ _old/                   old emulator (not in git)
 - `.github/workflows/sync-games.yml` workflow: every day it syncs from GitHub, tests, commits and republishes Pages.
   The same workflow also syncs the KEYB/SD BIOS from github.com/Boogs77/miniVIC_bios (`sync-bios.mjs --github`)
   and runs the bios, minivic and games tests when it changed, and the apps of github.com/Boogs77/miniVIC_apps
-  (`sync-apps.mjs --github`, then the apps test).
+  (`sync-apps.mjs --github`, then the apps test), and the song list of github.com/Boogs77/miniVIC_music
+  (`sync-music.mjs --github`, then the music test).
 - Titles and player counts come from the table in the games README; do not edit `games.ts` by hand.
 
 ## The two machines
@@ -141,7 +143,8 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
 - Keys mode "Keyboard": every mapped key gets preventDefault (Ctrl+S, F5, Tab, Backspace...); in fullscreen the
   Keyboard Lock API (Chromium) also passes Ctrl+W/T/N, Ctrl+Tab and F12 to the emulator.
 - Physical keys in joystick mode: P1 arrows + Z/Space (1) + X (2); P2 WASD + F (1) + G (2). Gamepad API: first two pads.
-- Panels: Games, Apps (MiniVIC Apps started directly, BIOS switched to KEYB/SD, keys to the keyboard), Media (ROM, .bin program, WozMon dump, SD .img, SD builder, board demos), Rack, Audio (L/R VU,
+- Panels: Games, Apps (MiniVIC Apps started directly, BIOS switched to KEYB/SD, keys to the keyboard), Music (starts the
+  MiniVIC Jukebox, the only way to play the songs; the song list is information only), Media (ROM, .bin program, WozMon dump, SD .img, SD builder, board demos), Rack, Audio (L/R VU,
   registers and notes of the two AYs, per-channel mute), Serial ('crt' or 'ansi' layout), Debug (CPU, disassembly,
   step/frame, breakpoints, CPU/VRAM memory, VDP, VIA).
 

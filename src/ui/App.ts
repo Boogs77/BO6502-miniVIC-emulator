@@ -10,15 +10,16 @@ import { Joypad } from './Joypad';
 import { Displays } from './Displays';
 import { gamesPanel } from './panels/GamesPanel';
 import { appsPanel } from './panels/AppsPanel';
+import { musicPanel } from './panels/MusicPanel';
 import { MediaPanel } from './panels/MediaPanel';
 import { RackPanel } from './panels/RackPanel';
 import { AudioPanel } from './panels/AudioPanel';
 import { DebugPanel } from './panels/DebugPanel';
 
-type TabId = 'games' | 'apps' | 'media' | 'rack' | 'audio' | 'terminal' | 'debug';
+type TabId = 'games' | 'apps' | 'music' | 'media' | 'rack' | 'audio' | 'terminal' | 'debug';
 
 const TABS: Array<[TabId, string]> = [
-  ['games', 'Games'], ['apps', 'Apps'], ['media', 'Media'], ['rack', 'Rack'], ['audio', 'Audio'], ['terminal', 'Serial'], ['debug', 'Debug'],
+  ['games', 'Games'], ['apps', 'Apps'], ['music', 'Music'], ['media', 'Media'], ['rack', 'Rack'], ['audio', 'Audio'], ['terminal', 'Serial'], ['debug', 'Debug'],
 ];
 
 export class App {
@@ -62,6 +63,7 @@ export class App {
 
     this.panels.set('games', gamesPanel(emu));
     this.panels.set('apps', appsPanel(emu));
+    this.panels.set('music', musicPanel(emu));
     this.panels.set('media', this.media.el);
     this.panels.set('rack', this.rack.el);
     this.panels.set('audio', this.audioPanel.el);

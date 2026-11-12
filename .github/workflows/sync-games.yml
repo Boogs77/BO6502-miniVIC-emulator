@@ -12,6 +12,7 @@
 # identical to the one bo6502-SDbuilder generates. The full SD (games + MiniVIC Apps, the default one,
 # public/sd_full.img.gz) is rebuilt the same way with the applications of github.com/Boogs77/miniVIC_apps.
 # The same applications are copied to public/apps (src/machines/apps.ts regenerated) for the Apps panel.
+# The song list of the Music panel (src/machines/music.ts) comes from the README of github.com/Boogs77/miniVIC_music.
 name: Sync miniVIC games, apps and BIOS
 
 on:
@@ -33,6 +34,7 @@ jobs:
       changed: ${{ steps.sync.outputs.changed }}
       bios_changed: ${{ steps.bios.outputs.changed }}
       apps_changed: ${{ steps.apps.outputs.changed }}
+      music_changed: ${{ steps.music.outputs.changed }}
       sd_changed: ${{ steps.sd.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
@@ -69,6 +71,14 @@ jobs:
           echo "changed=$(node -p "require('./apps.json').changed")" >> "$GITHUB_OUTPUT"
           node scripts/sync-apps.mjs --github --check    # after the sync it must be in sync
           rm apps.json
+
+      - id: music
+        name: Sync the song list of the Music panel from miniVIC_music
+        run: |
+          node scripts/sync-music.mjs --github --json | tee music.json
+          echo "changed=$(node -p "require('./music.json').changed")" >> "$GITHUB_OUTPUT"
+          node scripts/sync-music.mjs --github --check   # after the sync it must be in sync
+          rm music.json
 
       - name: Check out bo6502-SDbuilder (private, read-only deploy key)
         uses: actions/checkout@v4
@@ -114,24 +124,25 @@ jobs:
           node tests/run.mjs minivic
 
       - name: Check that every application starts
-        if: steps.apps.outputs.changed == 'true' || steps.bios.outputs.changed == 'true' || steps.sd.outputs.changed == 'true'
+        if: steps.apps.outputs.changed == 'true' || steps.music.outputs.changed == 'true' || steps.bios.outputs.changed == 'true' || steps.sd.outputs.changed == 'true'
         run: |
           npx tsc --noEmit
           node tests/run.mjs apps
+          node tests/run.mjs music
 
       - name: Commit and push
-        if: steps.sync.outputs.changed == 'true' || steps.bios.outputs.changed == 'true' || steps.apps.outputs.changed == 'true' || steps.sd.outputs.changed == 'true'
+        if: steps.sync.outputs.changed == 'true' || steps.bios.outputs.changed == 'true' || steps.apps.outputs.changed == 'true' || steps.music.outputs.changed == 'true' || steps.sd.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/games src/machines/games.ts public/roms/minivic_keybsd.bin src/machines/roms.ts \
-                  public/apps src/machines/apps.ts public/sd.img public/sd_full.img.gz public/songs
+                  public/apps src/machines/apps.ts src/machines/music.ts public/sd.img public/sd_full.img.gz public/songs
           git commit -m "Sync miniVIC games, applications, BIOS and the default SD"
           git push
 
   deploy:
     needs: sync
-    if: needs.sync.outputs.changed == 'true' || needs.sync.outputs.bios_changed == 'true' || needs.sync.outputs.apps_changed == 'true' || needs.sync.outputs.sd_changed == 'true'
+    if: needs.sync.outputs.changed == 'true' || needs.sync.outputs.bios_changed == 'true' || needs.sync.outputs.apps_changed == 'true' || needs.sync.outputs.music_changed == 'true' || needs.sync.outputs.sd_changed == 'true'
     permissions:
       contents: read
       pages: write

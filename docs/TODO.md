@@ -5,16 +5,13 @@ Undocumented hardware behaviour is asked to the user, not invented.
 
 ---
 
-## 🎵 1. Music tab
+## 🎵 Music tab (done 2026-11-12)
 
-A **Music** tab next to Games and Apps, built like the Apps tab:
-- the songs are **not started directly**: the tab starts the **MiniVIC Jukebox** (`public/apps/jukebox.bin`,
-  KEYB/SD BIOS, joystick), which plays the MiniVIC Sound songs of the default SD (`public/songs/*.bin`);
-- the tab shows the list of songs (titles from bo6502-SDbuilder/songs, not written by hand) as information;
-- a test that starts the Jukebox from the tab and checks that the AYs play;
-- open point: can the Jukebox be started on a chosen song, or does the user always pick it in the Jukebox?
+- Done: the **Music** tab starts the MiniVIC Jukebox (the only player, it contains all the songs) and lists the
+  songs from the README of miniVIC_music (`scripts/sync-music.mjs`, daily workflow, `tests/music.test.ts`).
+- Open point: start the Jukebox on a chosen song (needs an entry point or a parameter in the Jukebox, miniVIC_music).
 
-## 🕹️ 2. Third machine: Arcade
+## 🕹️ 1. Third machine: Arcade
 
 A third machine next to BO6502 and miniVIC, based on the BO6502: practically identical to the miniVIC but
 **without the keyboard**, so it can also be used to build a real cabinet.
