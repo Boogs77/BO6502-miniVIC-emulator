@@ -1,9 +1,11 @@
-// On-screen Sega Master System joystick
+// On-screen Sega Master System joystick, or Arcade6502 control panel
 //
 // D-pad: press and drag (diagonals too) with the mouse or a finger.
 // Independent buttons 1 and 2: with multi-touch they work together with the D-pad.
+// Arcade6502 (setArcade): also button 3, START and COIN.
 
-import { JOY_DOWN, JOY_FIRE1, JOY_FIRE2, JOY_LEFT, JOY_RIGHT, JOY_UP } from '../boards/Boards';
+import { JOY_DOWN, JOY_FIRE1, JOY_FIRE2, JOY_FIRE3, JOY_LEFT, JOY_RIGHT, JOY_START, JOY_UP } from '../boards/Boards';
+import { JOY_COIN } from '../app/Emulator';
 import { h } from './dom';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -14,6 +16,18 @@ function svg(tag: string, attrs: Record<string, string | number>): SVGElement {
   return el;
 }
 
+/** START icon: n people (head and shoulders) */
+function players(n: number): SVGElement {
+  const w = 12 * n + 2;
+  const icon = svg('svg', { viewBox: `0 0 ${w} 14`, width: w, height: 14, class: 'start-icon', 'aria-hidden': 'true' });
+  for (let i = 0; i < n; i++) {
+    const x = 7 + i * 12;
+    icon.append(svg('circle', { cx: x, cy: 4, r: 3 }));
+    icon.append(svg('path', { d: `M${x - 5} 14 v-2 a5 5 0 0 1 10 0 v2 z` }));
+  }
+  return icon;
+}
+
 export class Joypad {
   readonly el: HTMLElement;
   private dirBits = 0;
@@ -21,9 +35,14 @@ export class Joypad {
   private arms = new Map<number, SVGElement>();
   private buttons = new Map<number, HTMLElement>();
   private readonly onChange: (bits: number) => void;
+  private readonly label: HTMLElement;
+  private readonly player: number;
+  /** controls present only on the Arcade6502 */
+  private readonly arcadeOnly: HTMLElement[];
 
   constructor(player: number, onChange: (bits: number) => void) {
     this.onChange = onChange;
+    this.player = player;
     const pad = svg('svg', { viewBox: '0 0 120 120', class: 'dpad', role: 'img', 'aria-label': `Player ${player + 1} D-pad` }) as SVGSVGElement;
     pad.append(svg('circle', { cx: 60, cy: 60, r: 58, class: 'dpad-base' }));
     const arm = (bit: number, d: string) => {
@@ -41,8 +60,8 @@ export class Joypad {
     padWrap.append(pad);
     this.bindPad(pad);
 
-    const btn = (bit: number, label: string) => {
-      const b = h('button', { class: 'joy-btn', type: 'button', 'aria-label': `Button ${label}` }, label);
+    const btn = (bit: number, label: string | Node, cls = 'joy-btn', name = `Button ${label}`) => {
+      const b = h('button', { class: cls, type: 'button', 'aria-label': name }, label);
       this.buttons.set(bit, b);
       b.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -56,13 +75,32 @@ export class Joypad {
       return b;
     };
 
+    const b3 = btn(JOY_FIRE3, '3');
+    // START shows one player (P1) or two players (P2), as on arcade panels; the two rows are mirrored:
+    // P1 "START COIN" on the right, P2 "COIN START" on the left
+    const start = btn(JOY_START, players(player + 1), 'joy-pill start', `Player ${player + 1} START`);
+    const coin = btn(JOY_COIN, 'COIN', 'joy-pill coin', `Player ${player + 1} COIN`);
+    const extra = h('div', { class: player === 0 ? 'joy-extra' : 'joy-extra mirror' },
+      ...(player === 0 ? [start, coin] : [coin, start]));
+    this.arcadeOnly = [b3, extra];
+    this.label = h('div', { class: 'joy-label' });
+
     this.el = h('div', { class: 'joypad' },
-      h('div', { class: 'joy-label' }, `JOYSTICK ${player + 1}`),
+      this.label,
       h('div', { class: 'joy-body' },
         padWrap,
-        h('div', { class: 'joy-buttons' }, btn(JOY_FIRE1, '1'), btn(JOY_FIRE2, '2')),
+        h('div', { class: 'joy-buttons' }, btn(JOY_FIRE1, '1'), btn(JOY_FIRE2, '2'), b3),
       ),
+      extra,
     );
+    this.setArcade(false);
+  }
+
+  /** Arcade6502 control panel (buttons 1-3, START, COIN) or SMS joystick (buttons 1-2) */
+  setArcade(on: boolean): void {
+    this.label.textContent = on ? `PLAYER ${this.player + 1}` : `JOYSTICK ${this.player + 1}`;
+    for (const el of this.arcadeOnly) el.hidden = !on;
+    this.el.classList.toggle('arcade', on);
   }
 
   private bindPad(pad: SVGSVGElement): void {

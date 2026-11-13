@@ -1,8 +1,10 @@
 # BO6502 · miniVIC Emulator – instructions for Claude
 
-Web emulator (TypeScript + Vite, no runtime dependencies) of two 65C02 computers by Boogs77:
+Web emulator (TypeScript + Vite, no runtime dependencies) of three 65C02 machines by Boogs77:
 - **BO6502**: modular computer on a 39-pin backplane — https://github.com/Boogs77/BO6502_65C02-based_modular_computer
 - **miniVIC**: the compact version for games — games in https://github.com/Boogs77/miniVIC_games
+- **Arcade6502**: the miniVIC cabinet without a keyboard (hardware `../arcade_65c02`, BIOS `../Arcade BIOS`,
+  github.com/Boogs77/arcade_bios, private; how it works: `../Arcade BIOS/ARCADE.md`)
 
 Repository: https://github.com/Boogs77/BO6502-miniVIC-emulator
 Online (GitHub Pages, automatic deploy on every push to main): https://boogs77.github.io/BO6502-miniVIC-emulator/
@@ -35,6 +37,10 @@ public/roms/minivic.bin miniVIC BIOS 24.10.26 (WozMon + MS BASIC 1977 + SD menu)
 public/roms/minivic_keybsd.bin  BIOS 27.10.26 KEYB/SD ('keybsd', **default**): extended keyboard, SDSC v1/v2 + SDHC,
                         sector read/write ($FD18-$FD21). Copied by scripts/sync-bios.mjs from bin/boogs.bin of
                         github.com/Boogs77/miniVIC_bios (local copy ../miniVIC BIOS)
+public/roms/arcade.bin  Arcade BIOS ('arcade', default BIOS of the Arcade6502), copied by scripts/sync-bios.mjs from
+                        bin/arcade.bin of ../Arcade BIOS (the --github sync keeps it: the repository is private)
+public/sd_arcade.img.gz default SD of the Arcade6502: sd_arcade.img of bo6502-SDbuilder (update_sd.py --mode arcade):
+                        cabinet games, Jukebox and songs, arcade catalog read by the front-end
 public/sd_full.img.gz   **default SD**: sd_full.img of bo6502-SDbuilder (update_sd.py --mode full: games, MiniVIC Apps,
                         songs, sample documents at $00800000), gzipped by scripts/pack-sd-full.mjs, unpacked in the browser
 public/games/*.bin      miniVIC games (loaded at $0FD0, started at $1000)
@@ -52,7 +58,7 @@ scripts/sync-apps.mjs   apps sync from miniVIC_apps
 scripts/sync-music.mjs  song list of the Music panel (src/machines/music.ts) from the README of miniVIC_music
 .github/workflows/      pages.yml (build and deploy on GitHub Pages), sync-games.yml (daily games and BIOS sync)
 .claude/                settings.json (SessionStart hook), skills/sync-minivic-games
-tests/                  run.mjs (runner), cpu/devices/displays/games/apps/minivic/serial.test.ts, helpers.ts
+tests/                  run.mjs (runner), cpu/devices/displays/games/apps/minivic/arcade/serial.test.ts, helpers.ts
 _old/                   old emulator (not in git)
 ```
 
@@ -84,7 +90,7 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
 | Legacy LCD | W65C22 + HD44780 16x2, decodes the whole `$Dxxx` page (off by default) | `$D000` | — |
 | LED test | W65C22, 16 LEDs (PA, PB; lit = output at 1), decodes the whole `$Dxxx` page (off by default) | `$D000` | — |
 
-- The BO6502 is configurable in the rack (boards, addresses, INT line, 0.5/1/2 MHz clock) **only with the machine off**; the miniVIC is fixed.
+- The BO6502 is configurable in the rack (boards, addresses, INT line, 0.5/1/2 MHz clock) **only with the machine off**; the miniVIC and the Arcade6502 are fixed.
 - Joystick: bit 0 up, 1 down, 2 left, 3 right, 4 button 1, 5 button 2 (0 = pressed on the pins).
 - PSG clock = CPU clock (1 MHz: period = 1,000,000 / (16 × f)).
 - **Decision 2026-10-23**: the BO6502 audio board uses the same decoding as the miniVIC (only the address changes);
@@ -100,6 +106,18 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
   `the_warriors.asm` (`SAT_BUFFER` $0260 copied by the NMI before being written), `asteroids.asm` (`WAVE` $91).
   To report/fix in the games (the user asked not to fix them for now): initialise the NMI variables
   (or read VREG) before enabling the INT.
+
+## Arcade6502 (built 2026-11-13)
+- Profile `arcade`: the miniVIC boards and addresses **without the keyboard**; joystick option `'arcade'` = 8 inputs per
+  port (bit 6 button 3, bit 7 START); SD option `'arcade'` = cabinet switches on the SD VIA port A (`$DD81`, active low):
+  bit 0 TEST, 5 SERVICE, 6 COIN 1, 7 COIN 2 (`SdCardBoard.setSwitches`). Source: schematic `Arcade6502.sch`.
+- Own BIOS setting (`settings.arcadeBios`, default `'arcade'`) and default SD (`sd_arcade.img.gz`): switching to or from
+  the Arcade6502 reloads BIOS and, if a bundled SD is in the slot (`Emulator.sdDefault`), the SD.
+- Keys always on the control panels (no keyboard): extra keys C/H = button 3, 1/Enter and 2 = START, 5/6 = COIN,
+  9 = SERVICE, 0 = TEST; `JOY_COIN` (0x100) is a UI bit routed to the SD switches. Gamepad: A B X = 1 2 3, Start, Back = COIN.
+- Games and Jukebox loaded straight into RAM with the Arcade BIOS start through `JT_INIT_CRT` ($FD09, return address
+  = entry - 1 on the stack), like the front-end, after the SD has been idle for 30 frames. Test: `tests/arcade.test.ts`.
+- Coin/start and button 3 are not used by the games yet (later, user's decision 2026-11-13).
 
 ## miniVIC BIOS (source: `../miniVIC BIOS`)
 - Two images, chosen in Media → ROM (setting `bios`, default `'keybsd'`): changing it rebuilds the machine with the
@@ -136,7 +154,7 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
 - In the browser the pace is set by the audio queue (~70 ms); without audio by the browser clock.
 
 ## User interface
-- Top bar: machine choice (BO6502 / miniVIC), POWER, RESET, Pause, speed, "Keys → Keyboard/Joystick", mute, fullscreen.
+- Top bar: machine choice (BO6502 / miniVIC / Arcade6502), POWER, RESET, Pause, speed, "Keys → Keyboard/Joystick", mute, fullscreen.
 - Virtual PS/2 keyboard (US layout like the BIOS table; Shift/Ctrl/Alt/Caps latched with the mouse;
   Ins/Del/Home/End/PgUp/PgDn for compact keyboards) and two clickable
   SMS joysticks (D-pad draggable diagonally too, multi-touch). They also light up with the physical keyboard and gamepads.

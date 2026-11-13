@@ -53,6 +53,11 @@ export class SDCard {
   private writeBuf: number[] = [];
   private writing = false;
 
+  /** CS is low: the card is in a transaction */
+  get selected(): boolean {
+    return !this.cs;
+  }
+
   get inserted(): boolean {
     return this.image !== null;
   }

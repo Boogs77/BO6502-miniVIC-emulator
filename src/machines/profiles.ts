@@ -4,6 +4,9 @@
 //         its address can be changed (like the real jumpers). The VDP interrupts on IRQ.
 // miniVIC: same architecture in a compact form, fixed configuration.
 //          Audio at $D38x, joystick at $D58x, SD at $DD8x, VDP on NMI.
+// Arcade6502: the cabinet version of the miniVIC (schematic Arcade6502.sch of arcade_65c02): same boards and
+//          addresses but no keyboard; the joystick ports use all 8 bits (button 3 on bit 6, START on bit 7)
+//          and the SD board VIA reads the cabinet switches (TEST, SERVICE, COIN 1, COIN 2). Fixed configuration.
 
 import { Machine } from '../core/Machine';
 import { BoardType, IrqLine } from '../core/Board';
@@ -12,14 +15,14 @@ import {
 } from '../boards/Boards';
 import { BigLcdBoard, LcdBoard, LcdWiring, LedBoard } from '../boards/DisplayBoards';
 
-export type MachineId = 'bo6502' | 'minivic';
+export type MachineId = 'bo6502' | 'minivic' | 'arcade';
 
 export interface BoardConfig {
   type: BoardType;
   enabled: boolean;
   base: number;
   irq: IrqLine;
-  /** board-specific option (LCD: '4bit' / '8bit' wiring) */
+  /** board-specific option (LCD: '4bit' / '8bit' wiring; joystick and SD: 'arcade' cabinet wiring) */
   option?: string;
 }
 
@@ -61,9 +64,25 @@ export const BO6502_BOARD_ORDER: BoardType[] = ['vdu', 'serial', 'keyboard', 'bi
 export const MACHINE_NAMES: Record<MachineId, string> = {
   bo6502: 'BO6502',
   minivic: 'miniVIC',
+  arcade: 'Arcade6502',
 };
 
+/** machines in the order of the selector */
+export const MACHINES: MachineId[] = ['bo6502', 'minivic', 'arcade'];
+
 export function defaultConfig(id: MachineId): MachineConfig {
+  if (id === 'arcade') {
+    return {
+      id, cpuHz: 1_000_000, ram: true, rom: true,
+      boards: [
+        { type: 'vdu', enabled: true, base: 0xB000, irq: 'nmi' },
+        { type: 'serial', enabled: true, base: 0xC000, irq: 'irq' },
+        { type: 'audio', enabled: true, base: 0xD380, irq: 'none' },
+        { type: 'joystick', enabled: true, base: 0xD580, irq: 'irq', option: 'arcade' },
+        { type: 'sdcard', enabled: true, base: 0xDD80, irq: 'irq', option: 'arcade' },
+      ],
+    };
+  }
   if (id === 'minivic') {
     return {
       id, cpuHz: 1_000_000, ram: true, rom: true,
@@ -104,7 +123,7 @@ export function upgradeConfig(cfg: MachineConfig): MachineConfig {
   return { ...cfg, boards };
 }
 
-/** the miniVIC has a fixed configuration */
+/** the miniVIC and the Arcade6502 have a fixed configuration */
 export function isConfigurable(id: MachineId): boolean {
   return id === 'bo6502';
 }
@@ -126,8 +145,8 @@ export function buildMachine(cfg: MachineConfig): Machine {
       case 'vdu': m.addBoard(new VduBoard(b.base, b.irq)); break;
       case 'serial': { const s = new SerialBoard(b.base); s.irqLine = b.irq; m.addBoard(s); break; }
       case 'keyboard': { const k = new KeyboardBoard(b.base); k.irqLine = b.irq; m.addBoard(k); break; }
-      case 'joystick': { const j = new JoystickBoard(b.base); j.irqLine = b.irq; m.addBoard(j); break; }
-      case 'sdcard': { const s = new SdCardBoard(b.base); s.irqLine = b.irq; m.addBoard(s); break; }
+      case 'joystick': { const j = new JoystickBoard(b.base, b.option === 'arcade' ? 8 : 6); j.irqLine = b.irq; m.addBoard(j); break; }
+      case 'sdcard': { const s = new SdCardBoard(b.base, b.option === 'arcade'); s.irqLine = b.irq; m.addBoard(s); break; }
       case 'audio': m.addBoard(new AudioBoard(b.base)); break;
       case 'biglcd': { const l = new BigLcdBoard(b.base); l.irqLine = b.irq; m.addBoard(l); break; }
       case 'lcd': { const l = new LcdBoard(b.base, (b.option as LcdWiring) || '4bit'); l.irqLine = b.irq; m.addBoard(l); break; }

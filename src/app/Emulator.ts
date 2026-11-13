@@ -1,5 +1,8 @@
 // Emulator - controller: current machine, settings, run loop, input
 //
+// Every machine has its default BIOS and SD card: the Arcade6502 starts with the Arcade BIOS and the cabinet SD
+// (public/sd_arcade.img.gz), the others with the BIOS chosen in the Media panel and the full SD.
+//
 // The loop runs on requestAnimationFrame. With audio on, the pace is set by the worklet
 // queue (frames are run while there is less than ~70 ms of audio queued), so sound and
 // video stay locked without stutter; without audio the browser clock is followed.
@@ -9,7 +12,8 @@ import { MachineConfig, MachineId, buildMachine, defaultConfig } from '../machin
 import { AudioOutput } from '../audio/AudioOutput';
 import {
   AudioBoard, JoystickBoard, KeyboardBoard, SdCardBoard, SerialBoard,
-  JOY_DOWN, JOY_FIRE1, JOY_FIRE2, JOY_LEFT, JOY_RIGHT, JOY_UP,
+  JOY_DOWN, JOY_FIRE1, JOY_FIRE2, JOY_FIRE3, JOY_LEFT, JOY_RIGHT, JOY_START, JOY_UP,
+  SW_COIN1, SW_COIN2, SW_SERVICE, SW_TEST,
 } from '../boards/Boards';
 import { buildSdImage, extendSdImage, SdProgram } from '../machines/sdimage';
 import { GAMES, GAME_ENTRY, GAME_LOAD } from '../machines/games';
@@ -22,6 +26,12 @@ import { BoardType } from '../core/Board';
 
 export type KeyMode = 'ps2' | 'joy';
 
+/** COIN of a control panel: not a joystick bit, it goes to the SD VIA of the Arcade6502 (SW_COIN1/2) */
+export const JOY_COIN = 0x100;
+
+/** default SD images: full SD (games + apps), games SD, Arcade6502 cabinet SD; null = an image of the user */
+export type SdDefault = 'full' | 'games' | 'arcade' | null;
+
 /** physical keys -> joystick: P1 arrows + Z/X, P2 WASD + F/G */
 const JOY_KEYS: Record<string, [number, number]> = {
   ArrowUp: [0, JOY_UP], ArrowDown: [0, JOY_DOWN], ArrowLeft: [0, JOY_LEFT], ArrowRight: [0, JOY_RIGHT],
@@ -29,6 +39,18 @@ const JOY_KEYS: Record<string, [number, number]> = {
   KeyW: [1, JOY_UP], KeyS: [1, JOY_DOWN], KeyA: [1, JOY_LEFT], KeyD: [1, JOY_RIGHT],
   KeyF: [1, JOY_FIRE1], KeyG: [1, JOY_FIRE2],
 };
+
+/** Arcade6502 only: button 3 (C / H), START (1 or Enter / 2), COIN (5 / 6), like the MAME keys */
+const ARCADE_KEYS: Record<string, [number, number]> = {
+  KeyC: [0, JOY_FIRE3], Digit1: [0, JOY_START], Enter: [0, JOY_START], Digit5: [0, JOY_COIN],
+  KeyH: [1, JOY_FIRE3], Digit2: [1, JOY_START], Digit6: [1, JOY_COIN],
+};
+
+/** Arcade6502 cabinet switches on the keyboard: 9 = SERVICE (system test), 0 = TEST (joystick test) */
+const SWITCH_KEYS: Record<string, number> = { Digit9: SW_SERVICE, Digit0: SW_TEST };
+
+/** BIOS jump table: JT_INIT_CRT (text mode with the BIOS font), called by the Arcade front-end before a game */
+const JT_INIT_CRT = 0xFD09;
 
 /** miniVIC applications played with the joystick, not the PS/2 keyboard (the keys go to the joystick) */
 const JOYSTICK_APPS = new Set(['jukebox.bin']);
@@ -52,6 +74,8 @@ export class Emulator {
   sdName = '';
   /** the card was written since it was inserted or downloaded */
   sdModified = false;
+  /** which bundled image is in the slot (switching to or from the Arcade6502 changes it) */
+  sdDefault: SdDefault = null;
   /** SD save area (records, saved games): apart from the image, kept in the browser */
   readonly saves = new SaveArea();
   /** the save area is kept in the browser (false: lost on reload) */
@@ -70,6 +94,9 @@ export class Emulator {
   readonly joyVirtual = [0, 0];
   private joyKeys = [0, 0];
   private joyPad = [0, 0];
+  // Arcade6502 cabinet switches (TEST, SERVICE): on screen and on the keyboard
+  private switchVirtual = 0;
+  private switchKeys = 0;
 
   private raf = 0;
   private lastTime = 0;
@@ -89,24 +116,35 @@ export class Emulator {
     return this.config.id;
   }
 
+  get isArcade(): boolean {
+    return this.config.id === 'arcade';
+  }
+
+  /** BIOS saved in the settings for the current machine */
+  get biosSetting(): BiosId {
+    return this.isArcade ? this.settings.arcadeBios : this.settings.bios;
+  }
+
   /** loads the chosen BIOS and the default SD card (at startup) */
   async init(): Promise<void> {
-    await this.loadRom(this.settings.bios).catch(() => this.loadRom('std'));
+    await this.loadRom(this.biosSetting).catch(() => this.loadRom(this.isArcade ? 'arcade' : 'std'));
     this.savesKept = await attachSaveStore(this.saves).catch(() => false);
     const keep = this.saves.onWrite;
     this.saves.onWrite = sector => { keep(sector); this.onState(); };
-    await this.loadFullSd().catch(() => this.loadGamesSd())
-      .catch(() => this.onMessage('Default games not found', 'error'));
+    await this.loadDefaultSd().catch(() => this.onMessage('Default games not found', 'error'));
     this.rebuild();
   }
 
-  /**
-   * default SD: public/sd_full.img.gz, the full SD of bo6502-SDbuilder (games, MiniVIC Apps, songs,
-   * sample documents; the apps need the BIOS KEYB/SD), gzipped by scripts/pack-sd-full.mjs
-   */
-  async loadFullSd(): Promise<void> {
-    const r = await fetch('./sd_full.img.gz');
-    if (!r.ok || !r.body) throw new Error('full SD not found');
+  /** the default SD of the current machine: the cabinet SD for the Arcade6502, the full SD for the others */
+  private async loadDefaultSd(): Promise<void> {
+    if (this.isArcade) await this.loadArcadeSd().catch(() => this.loadFullSd());
+    else await this.loadFullSd().catch(() => this.loadGamesSd());
+  }
+
+  /** fetches a gzipped SD image of public/ ("BOGS" directory checked) */
+  private async fetchSdGz(file: string, what: string): Promise<Uint8Array> {
+    const r = await fetch(`./${file}`);
+    if (!r.ok || !r.body) throw new Error(`${what} not found`);
     let data = new Uint8Array(await r.arrayBuffer());
     // a server may already have removed the gzip layer (Content-Encoding): unpack only a real .gz
     if (data[0] === 0x1F && data[1] === 0x8B) {
@@ -114,11 +152,34 @@ export class Emulator {
       data = new Uint8Array(await new Response(stream).arrayBuffer());
     }
     if (data.length < 512 || data.length % 512 || String.fromCharCode(...data.subarray(0, 4)) !== 'BOGS') {
-      throw new Error('full SD: not an SD image');
+      throw new Error(`${what}: not an SD image`);
     }
+    return data;
+  }
+
+  /**
+   * default SD: public/sd_full.img.gz, the full SD of bo6502-SDbuilder (games, MiniVIC Apps, songs,
+   * sample documents; the apps need the BIOS KEYB/SD), gzipped by scripts/pack-sd-full.mjs
+   */
+  async loadFullSd(): Promise<void> {
+    const data = await this.fetchSdGz('sd_full.img.gz', 'full SD');
     this.sdImage = extendSdImage(data);
     this.sdModified = false;
+    this.sdDefault = 'full';
     this.sdName = `Full SD: games + MiniVIC Apps (${data[15]} programs)`;
+  }
+
+  /**
+   * default SD of the Arcade6502: public/sd_arcade.img.gz, the cabinet SD of bo6502-SDbuilder
+   * (update_sd.py --mode arcade): the games, the MiniVIC Jukebox and its songs, and the arcade catalog
+   * (list, pictures, descriptions) read by the Arcade BIOS front-end
+   */
+  async loadArcadeSd(): Promise<void> {
+    const data = await this.fetchSdGz('sd_arcade.img.gz', 'Arcade6502 SD');
+    this.sdImage = extendSdImage(data);
+    this.sdModified = false;
+    this.sdDefault = 'arcade';
+    this.sdName = `Arcade6502 cabinet SD (${data[15]} programs + catalog)`;
   }
 
   /** fetches a BIOS image of the ROMS list (public/roms) */
@@ -134,7 +195,8 @@ export class Emulator {
   /** changes the BIOS: rebuilds the machine with the same SD image and, if it was on, powers it on again */
   async selectBios(id: BiosId): Promise<void> {
     await this.loadRom(id);
-    this.settings.bios = id;
+    if (this.isArcade) this.settings.arcadeBios = id;
+    else this.settings.bios = id;
     this.save();
     const wasOn = this.powered;
     this.powerOff();
@@ -169,6 +231,7 @@ export class Emulator {
         this.sdImage = extendSdImage(data);
         this.sdModified = false;
         this.sdName = `BO6502-SDbuilder SD (${data[15]} programs)`;
+        this.sdDefault = 'games';
         return;
       }
     }
@@ -182,6 +245,7 @@ export class Emulator {
     this.sdImage = extendSdImage(buildSdImage(programs));
     this.sdModified = false;
     this.sdName = `miniVIC games (${programs.length} programs)`;
+    this.sdDefault = 'games';
   }
 
   /** rebuilds the machine from the configuration (only with the machine off) */
@@ -197,17 +261,31 @@ export class Emulator {
     }
     const serial = this.machine.board<SerialBoard>('serial');
     if (serial) serial.acia.onTransmit = b => this.onSerial(b);
+    this.updateJoysticks();
     this.applyAudioSettings();
     this.onState();
   }
 
-  selectMachine(id: MachineId): void {
+  /**
+   * changes the machine. Going to or from the Arcade6502 also changes the BIOS (the one saved for that machine)
+   * and, if a bundled SD is in the slot, the SD (cabinet SD / full SD); an image of the user stays in.
+   */
+  async selectMachine(id: MachineId): Promise<void> {
     if (id === this.machineId) return;
     const wasOn = this.powered;
     if (wasOn) this.powerOff();
+    const arcadeChanged = (id === 'arcade') !== this.isArcade;
     this.settings.machine = id;
     this.config = this.settings.configs[id];
     this.save();
+    if (arcadeChanged) {
+      this.releaseKeys();
+      await this.loadRom(this.biosSetting).catch(e => this.onMessage(String((e as Error).message), 'error'));
+      if (this.sdDefault !== null && (this.sdDefault === 'arcade') !== this.isArcade) {
+        await this.loadDefaultSd().catch(e => this.onMessage(String((e as Error).message), 'error'));
+      }
+    }
+    if (id !== this.machineId) return;   // another machine was chosen meanwhile
     this.rebuild();
     if (wasOn) this.powerOn();
   }
@@ -380,11 +458,23 @@ export class Emulator {
     return this.machine.board<JoystickBoard>('joystick');
   }
 
+  /** the physical keys drive the joysticks (always on the Arcade6502: it has no keyboard) */
+  get keysToJoystick(): boolean {
+    return this.settings.keyMode === 'joy' || this.isArcade;
+  }
+
   /** physical key event: true if the emulator used it */
   physicalKey(code: string, down: boolean, repeat: boolean): boolean {
     if (!this.powered) return false;
-    if (this.settings.keyMode === 'joy') {
-      const j = JOY_KEYS[code];
+    if (this.keysToJoystick) {
+      const sw = this.isArcade ? SWITCH_KEYS[code] : undefined;
+      if (sw) {
+        if (down) this.switchKeys |= sw;
+        else this.switchKeys &= ~sw;
+        this.updateJoysticks();
+        return true;
+      }
+      const j = JOY_KEYS[code] ?? (this.isArcade ? ARCADE_KEYS[code] : undefined);
       if (!j) return false;
       if (down) this.joyKeys[j[0]] |= j[1];
       else this.joyKeys[j[0]] &= ~j[1];
@@ -398,6 +488,7 @@ export class Emulator {
 
   releaseKeys(): void {
     this.joyKeys = [0, 0];
+    this.switchKeys = 0;
     this.keyboard?.keyboard.releaseAll();
     this.updateJoysticks();
   }
@@ -414,15 +505,28 @@ export class Emulator {
     this.updateJoysticks();
   }
 
-  /** combined state of a joystick (for the UI) */
+  /** combined state of a joystick (for the UI): JOY_* bits, JOY_COIN for the coin of that player */
   joystickState(player: number): number {
     return this.joyVirtual[player] | this.joyKeys[player] | this.joyPad[player];
   }
 
+  /** Arcade6502 cabinet switches pressed on screen */
+  setVirtualSwitches(bits: number): void {
+    this.switchVirtual = bits;
+    this.updateJoysticks();
+  }
+
+  /** TEST / SERVICE switches pressed now (SW_* bits, for the UI) */
+  get switchState(): number {
+    return this.switchVirtual | this.switchKeys;
+  }
+
   private updateJoysticks(): void {
     const j = this.joystick;
-    if (!j) return;
-    for (let p = 0; p < 2; p++) j.setJoystick(p, this.joystickState(p));
+    if (j) for (let p = 0; p < 2; p++) j.setJoystick(p, this.joystickState(p) & 0xFF);
+    // the coins and the TEST / SERVICE switches go to the SD board (wired only on the Arcade6502)
+    const coins = (this.joystickState(0) & JOY_COIN ? SW_COIN1 : 0) | (this.joystickState(1) & JOY_COIN ? SW_COIN2 : 0);
+    this.machine.board<SdCardBoard>('sdcard')?.setSwitches(coins | this.switchState);
   }
 
   private pollGamepads(): void {
@@ -438,8 +542,17 @@ export class Emulator {
       if (b(13) || ay > 0.5) v |= JOY_DOWN;
       if (b(14) || ax < -0.5) v |= JOY_LEFT;
       if (b(15) || ax > 0.5) v |= JOY_RIGHT;
-      if (b(0) || b(2)) v |= JOY_FIRE1;
-      if (b(1) || b(3)) v |= JOY_FIRE2;
+      if (this.isArcade) {
+        // Arcade6502: A, B, X = buttons 1-3, Start = START, Back/Select = COIN
+        if (b(0)) v |= JOY_FIRE1;
+        if (b(1)) v |= JOY_FIRE2;
+        if (b(2)) v |= JOY_FIRE3;
+        if (b(9)) v |= JOY_START;
+        if (b(8)) v |= JOY_COIN;
+      } else {
+        if (b(0) || b(2)) v |= JOY_FIRE1;
+        if (b(1) || b(3)) v |= JOY_FIRE2;
+      }
       next[p++] = v;
     }
     if (next[0] !== this.joyPad[0] || next[1] !== this.joyPad[1]) {
@@ -464,10 +577,11 @@ export class Emulator {
   }
 
   /** inserts an SD image, extended in memory to 16 MB for the documents area (the file is not changed) */
-  setSdImage(image: Uint8Array | null, name: string): void {
+  setSdImage(image: Uint8Array | null, name: string, kind: SdDefault = null): void {
     this.sdImage = image && extendSdImage(image);
     this.sdName = name;
     this.sdModified = false;
+    this.sdDefault = image ? kind : null;
     this.machine.board<SdCardBoard>('sdcard')?.card.insert(this.sdImage);
     this.onState();
   }
@@ -481,12 +595,24 @@ export class Emulator {
   /**
    * loads a program into RAM; with entry >= 0 it starts it (stack reset, interrupts masked
    * as after the BIOS). If the machine is off it powers it on and lets the BIOS start.
+   * With the Arcade BIOS the program starts as from its front-end: through JT_INIT_CRT (text mode with the
+   * BIOS font), which returns to the entry point.
    */
   loadProgram(data: Uint8Array, load: number, entry: number): void {
+    const arcadeBios = this.bios === 'arcade';
     if (!this.powered) {
       this.powerOn();
-      // the BIOS initialises the boards: wait for its key-wait loop (max 3 s)
-      for (let i = 0; i < 180 && !(i > 20 && this.biosIdle()); i++) this.machine.runFrame();
+      if (arcadeBios) {
+        // the front-end initialises the boards and reads the SD catalog: wait until the card has been
+        // idle for half a second (max 10 s)
+        for (let i = 0, quiet = 0; i < 600 && quiet < 30; i++) {
+          this.machine.runFrame();
+          quiet = this.machine.board<SdCardBoard>('sdcard')?.card.selected ? 0 : quiet + 1;
+        }
+      } else {
+        // the BIOS initialises the boards: wait for its key-wait loop (max 3 s)
+        for (let i = 0; i < 180 && !(i > 20 && this.biosIdle()); i++) this.machine.runFrame();
+      }
       this.machine.audio.take();
     }
     this.machine.poke(load, data);
@@ -496,6 +622,12 @@ export class Emulator {
       cpu.sp = 0xFF;
       cpu.p |= 0x04;
       cpu.waiting = cpu.stopped = false;
+      if (arcadeBios) {
+        // JSR JT_INIT_CRT with the entry point as return address
+        this.machine.poke(0x01FE, Uint8Array.of((entry - 1) & 0xFF, (entry - 1) >> 8));
+        cpu.sp = 0xFD;
+        cpu.pc = JT_INIT_CRT;
+      }
       this.paused = false;
     }
     this.onState();
@@ -510,17 +642,24 @@ export class Emulator {
   async runGame(file: string): Promise<void> {
     const r = await fetch(`./games/${file}`);
     if (!r.ok) throw new Error(`${file} not found`);
-    if (this.machineId !== 'minivic') this.onMessage('The games are written for the miniVIC (VDP on NMI, audio $D38x, joystick $D58x)');
+    if (this.machineId === 'bo6502') this.onMessage('The games are written for the miniVIC (VDP on NMI, audio $D38x, joystick $D58x)');
     this.setKeyMode('joy');
     this.loadProgram(new Uint8Array(await r.arrayBuffer()), GAME_LOAD, GAME_ENTRY);
   }
 
-  /** miniVIC application: needs the KEYB/SD BIOS (sector routines, extended keyboard); keys on the PS/2 keyboard */
+  /**
+   * miniVIC application: needs the KEYB/SD BIOS (sector routines, extended keyboard); keys on the PS/2 keyboard.
+   * A joystick application (the Jukebox) also runs on the Arcade6502 with the Arcade BIOS, like a game.
+   */
   async runApp(file: string): Promise<void> {
     const r = await fetch(`./apps/${file}`);
     if (!r.ok) throw new Error(`${file} not found`);
     const data = new Uint8Array(await r.arrayBuffer());
-    if (this.machineId !== 'minivic') this.selectMachine('minivic');
+    if (this.isArcade && JOYSTICK_APPS.has(file) && this.bios === 'arcade') {
+      this.loadProgram(data, GAME_LOAD, GAME_ENTRY);
+      return;
+    }
+    if (this.machineId !== 'minivic') await this.selectMachine('minivic');
     if (this.bios !== 'keybsd') {
       await this.selectBios('keybsd');
       this.powerOff();   // loadProgram powers on and waits for the new BIOS to initialise the boards
@@ -535,7 +674,7 @@ export class Emulator {
     const r = await fetch(`./demos/${file}`);
     if (!r.ok) throw new Error(`${file} not found`);
     const data = new Uint8Array(await r.arrayBuffer());
-    if (this.machineId !== 'bo6502') this.selectMachine('bo6502');
+    if (this.machineId !== 'bo6502') await this.selectMachine('bo6502');
     const cfg = this.config.boards.find(b => b.type === board);
     // legacy LCD and LEDs both decode the whole $Dxxx page: only one stays plugged in
     const rival = this.config.boards.find(b => b.enabled && b.type !== board &&

@@ -173,6 +173,24 @@ button.icon { padding: 6px 10px; }
 }
 .joy-btn:hover:not(:disabled) { background: radial-gradient(circle at 35% 30%, #e05f5b, #962a26); border-color: #4a1513; }
 .joy-btn.on { background: radial-gradient(circle at 35% 30%, #ffd27a, var(--accent)); color: #1b1408; border-color: #7a5212; transform: scale(.96); }
+/* Arcade6502 control panel: three buttons, START and COIN */
+.joypad.arcade .joy-buttons { display: grid; grid-template-columns: repeat(2, auto); gap: 4px 10px; justify-items: center; }
+.joypad.arcade .joy-btn { width: 44px; height: 44px; }
+/* buttons 1 2 on top, 3 below in the middle: an upside-down triangle */
+.joypad.arcade .joy-buttons .joy-btn:nth-child(3) { grid-column: 1 / span 2; }
+.joy-extra { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.joy-extra.mirror { justify-content: flex-start; }
+.start-icon { display: block; fill: currentColor; }
+.joy-pill.start { padding: 4px 12px; }
+.joy-pill, .cab-switch {
+  padding: 4px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+  background: #2d3640; border: 1px solid #12161b; color: var(--dim); touch-action: none; user-select: none;
+}
+.joy-pill.start { color: #ffe9e7; background: #5a2a28; }
+.joy-pill.coin { color: #ffe6b0; background: #4a3a18; }
+.joy-pill.on, .cab-switch.on { background: var(--accent); color: #1b1408; border-color: #7a5212; }
+.cabinet { flex: 1 1 100%; display: flex; justify-content: center; align-items: center; gap: 10px; }
+.cabinet .joy-label { margin: 0 4px 0 0; }
 
 /* ---------------- panels ---------------- */
 .side { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; align-self: start; }

@@ -38,7 +38,7 @@ export class MediaPanel {
         h('label', {}, 'BIOS ', this.biosSel),
         h('button', { type: 'button', onclick: () => this.loadRom() }, 'Load ROM .bin')),
       this.biosConfirm,
-      h('p', { class: 'hint' }, 'KEYB/SD adds the extended keyboard, SDHC cards and sector read/write for the MiniVIC Apps. Changing the BIOS restarts the machine.'),
+      h('p', { class: 'hint' }, 'KEYB/SD adds the extended keyboard, SDHC cards and sector read/write for the MiniVIC Apps. The Arcade BIOS is the game front-end of the Arcade6502 cabinet (its default BIOS; the choice is kept apart for that machine). Changing the BIOS restarts the machine.'),
       h('p', { class: 'hint' }, 'A ROM file of 32 KB covers $8000-$FFFF; a shorter one is aligned to the end (vectors at $FFFA). Takes effect at the next reset.'),
 
       h('h3', {}, 'Program in RAM'),
@@ -79,6 +79,7 @@ export class MediaPanel {
         h('button', { type: 'button', onclick: () => this.insertImage() }, 'Insert .img image'),
         h('button', { type: 'button', onclick: () => this.defaultSd(() => emu.loadFullSd()) }, 'Full SD'),
         h('button', { type: 'button', onclick: () => this.defaultSd(() => emu.loadGamesSd()) }, 'Games SD'),
+        h('button', { type: 'button', onclick: () => this.defaultSd(() => emu.loadArcadeSd()) }, 'Arcade SD'),
         h('button', { type: 'button', onclick: () => emu.setSdImage(null, '') }, 'Eject'),
         h('button', { type: 'button', onclick: () => this.downloadImage() }, 'Download .img')),
       h('p', { class: 'hint' }, 'The image is extended in memory to 16 MB for the documents of the MiniVIC Apps (from $00800000). Writes are not kept after a page reload: download the image to keep them.'),
@@ -117,9 +118,9 @@ export class MediaPanel {
     this.biosConfirm.hidden = false;
   }
 
-  /** inserts one of the bundled SD images (Full SD: games + MiniVIC Apps; Games SD: games and songs only) */
+  /** inserts one of the bundled SD images (Full SD: games + MiniVIC Apps; Games SD: games and songs only; Arcade SD: cabinet) */
   private defaultSd(load: () => Promise<void>): void {
-    load().then(() => this.emu.setSdImage(this.emu.sdImage, this.emu.sdName))
+    load().then(() => this.emu.setSdImage(this.emu.sdImage, this.emu.sdName, this.emu.sdDefault))
       .catch(e => this.emu.onMessage(String((e as Error).message), 'error'));
   }
 

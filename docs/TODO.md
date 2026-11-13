@@ -11,34 +11,17 @@ Undocumented hardware behaviour is asked to the user, not invented.
   songs from the README of miniVIC_music (`scripts/sync-music.mjs`, daily workflow, `tests/music.test.ts`).
 - Open point: start the Jukebox on a chosen song (needs an entry point or a parameter in the Jukebox, miniVIC_music).
 
-## 🕹️ 1. Third machine: Arcade
+## 🕹️ Third machine: Arcade6502 (done 2026-11-13)
 
-A third machine next to BO6502 and miniVIC, based on the BO6502: practically identical to the miniVIC but
-**without the keyboard**, so it can also be used to build a real cabinet.
-- Hardware: CPU, RAM/ROM, VDU (CRT screen only, no other displays), audio, serial port and SD **at the miniVIC
-  addresses** (VDU `$B000`, serial `$C000`, audio `$D380`, joystick `$D580`, SD `$DD80`); **no keyboard**;
-  **two joysticks with 5 buttons each**: button 1, button 2, button 3, **coin** and **start** (player 1 / player 2).
-- User interface: CRT screen and two arcade control panels (stick + buttons 1-3, coin, start), no virtual keyboard;
-  physical keys and gamepads mapped to the 5 buttons; Serial panel available (the serial port is present).
-- **Arcade BIOS**: written on purpose, starting from the previous miniVIC BIOS, keeping the serial port
-  and without the keyboard.
-  It is developed in a new **Arcade BIOS** project (separate from miniVIC BIOS); the emulator takes its image
-  with a sync script like `scripts/sync-bios.mjs`.
-- Open points (do not guess):
-  - joystick board: the user will send the circuit diagram when it is finished (address, bit of button 3,
-    coin and start: the current board has only bits 0-5, 4 directions + buttons 1-2);
-  - VDP INT line: NMI as on the miniVIC? what coin/start do outside the games;
-  - which games/programs run on it (the miniVIC games unchanged?);
-  - name and location of the Arcade BIOS project (local folder, GitHub repository).
-- **Front-end** to start the games, driven by the joystick:
-  - a scrolling list with the game names;
-  - a second view with a preview of the game and a description, also naming the game that inspired it;
-  - MiniVIC Sound / MiniVIC Jukebox is an entry of the front-end too: selecting it starts the Jukebox
-    (the songs are played only through the Jukebox, as in the Music tab).
-  - It is a **6502 program** that runs on the real cabinet, part of the **Arcade BIOS** (see above), not here.
-  - Previews: the title screens of the games (the ones the games test already captures), converted for the
-    TMS9918 and stored on the SD; descriptions: from the table of the games README (miniVIC_games).
-    The SD builder (bo6502-SDbuilder) must write previews and descriptions on the SD in a format the BIOS reads.
+The miniVIC cabinet without the keyboard (schematic `Arcade6502.sch`, Arcade BIOS project `../Arcade BIOS`,
+github.com/Boogs77/arcade_bios, private). Done: profile `arcade` (miniVIC addresses, VDP on NMI, serial port, no
+keyboard), 8-bit joystick ports (button 3, START), TEST / SERVICE / COIN 1 / COIN 2 on the SD VIA, two control panels
+and the cabinet switches on screen, keys and gamepads, Arcade BIOS 12.11.26 by default (`scripts/sync-bios.mjs`),
+cabinet SD `sd_arcade.img.gz` by default, Games / Music panels running on it, `tests/arcade.test.ts`.
+The front-end (list, gallery, game pages, tests, Jukebox entry) is in the Arcade BIOS.
+- Later (user's decision 2026-11-13): coin and START inside the games, button 3; the games will be changed for it.
+- The daily workflow cannot read the private arcade_bios repository: `public/roms/arcade.bin` is updated by running
+  `node scripts/sync-bios.mjs` locally (or by giving the workflow a token, `ARCADE_BIOS_TOKEN`).
 
 ---
 

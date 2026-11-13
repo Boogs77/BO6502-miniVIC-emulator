@@ -1,7 +1,8 @@
 // App - user interface layout and wiring
 
 import { Emulator } from '../app/Emulator';
-import { MACHINE_NAMES, MachineId } from '../machines/profiles';
+import { MACHINES, MACHINE_NAMES, MachineId } from '../machines/profiles';
+import { SW_SERVICE, SW_TEST } from '../boards/Boards';
 import { h, hex } from './dom';
 import { Screen } from './Screen';
 import { Terminal } from './Terminal';
@@ -52,6 +53,10 @@ export class App {
   private status = h('div', { class: 'statusbar' });
   private keyboardDeck: HTMLElement;
   private joyDeck: HTMLElement;
+  /** Arcade6502 cabinet switches (TEST, SERVICE) */
+  private cabinet: HTMLElement;
+  private switchBtns = new Map<number, HTMLElement>();
+  private kbToggle: HTMLElement;
 
   constructor(root: HTMLElement) {
     const emu = this.emu;
@@ -85,8 +90,8 @@ export class App {
 
     // ---------- top bar ----------
     const machineSeg = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Machine' });
-    for (const id of ['bo6502', 'minivic'] as MachineId[]) {
-      const b = h('button', { type: 'button', role: 'radio', onclick: () => emu.selectMachine(id) }, MACHINE_NAMES[id]);
+    for (const id of MACHINES) {
+      const b = h('button', { type: 'button', role: 'radio', onclick: () => void emu.selectMachine(id) }, MACHINE_NAMES[id]);
       this.machineBtns.set(id, b);
       machineSeg.append(b);
     }
@@ -113,7 +118,27 @@ export class App {
     const showKb = h('input', { type: 'checkbox', checked: emu.settings.showKeyboard });
     const showJoy = h('input', { type: 'checkbox', checked: emu.settings.showJoysticks });
     this.keyboardDeck = h('div', { class: 'deck-item' }, this.vkb.el);
-    this.joyDeck = h('div', { class: 'deck-item joys' }, this.pads[0].el, this.pads[1].el);
+    // TEST and SERVICE: momentary switches inside the cabinet, on the SD board VIA
+    let switches = 0;
+    const sw = (bit: number, label: string, title: string) => {
+      const b = h('button', { type: 'button', class: 'cab-switch', title }, label);
+      this.switchBtns.set(bit, b);
+      b.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        b.setPointerCapture(e.pointerId);
+        switches |= bit;
+        emu.setVirtualSwitches(switches);
+      });
+      const up = () => { switches &= ~bit; emu.setVirtualSwitches(switches); };
+      b.addEventListener('pointerup', up);
+      b.addEventListener('pointercancel', up);
+      return b;
+    };
+    this.cabinet = h('div', { class: 'cabinet' },
+      h('span', { class: 'joy-label' }, 'CABINET'),
+      sw(SW_SERVICE, 'SERVICE', 'System test (key 9)'),
+      sw(SW_TEST, 'TEST', 'Joystick test (key 0)'));
+    this.joyDeck = h('div', { class: 'deck-item joys' }, this.pads[0].el, this.pads[1].el, this.cabinet);
     showKb.addEventListener('change', () => { emu.settings.showKeyboard = showKb.checked; emu.save(); this.refreshState(); });
     showJoy.addEventListener('change', () => { emu.settings.showJoysticks = showJoy.checked; emu.save(); this.refreshState(); });
     const smooth = h('input', { type: 'checkbox', checked: emu.settings.smooth });
@@ -123,11 +148,12 @@ export class App {
     this.screen.setSmooth(emu.settings.smooth);
     this.screen.setScanlines(emu.settings.scanlines);
 
+    this.kbToggle = h('label', {}, showKb, ' Keyboard');
     const stage = h('section', { class: 'stage' },
       h('div', { class: 'monitor' }, this.screen.el, this.status),
       this.displays.el,
       h('div', { class: 'deck-toggles' },
-        h('label', {}, showKb, ' Keyboard'),
+        this.kbToggle,
         h('label', {}, showJoy, ' Joystick'),
         h('label', {}, smooth, ' Smoothing'),
         h('label', {}, scan, ' Scanlines')),
@@ -178,7 +204,7 @@ export class App {
     document.addEventListener('fullscreenchange', () => {
       const kl = (navigator as Navigator & { keyboard?: { lock?: () => Promise<void>; unlock?: () => void } }).keyboard;
       try {
-        if (document.fullscreenElement && this.emu.settings.keyMode === 'ps2') kl?.lock?.().catch(() => {});
+        if (document.fullscreenElement && !this.emu.keysToJoystick) kl?.lock?.().catch(() => {});
         else kl?.unlock?.();
       } catch {
         // not supported: those keys stay with the browser
@@ -209,12 +235,18 @@ export class App {
     this.pauseBtn.toggleAttribute('disabled', !emu.powered);
     this.pauseBtn.textContent = emu.paused ? 'Resume' : 'Pause';
     for (const [id, b] of this.machineBtns) b.setAttribute('aria-checked', String(id === emu.machineId));
-    const joy = emu.settings.keyMode === 'joy';
+    const joy = emu.keysToJoystick;
+    const arcade = emu.isArcade;
     this.keyModeBtn.textContent = joy ? 'Keys → Joystick' : 'Keys → Keyboard';
-    this.keyModeBtn.title = 'Where the physical keyboard keys go';
+    this.keyModeBtn.title = arcade ? 'The Arcade6502 has no keyboard: the keys go to the control panels' : 'Where the physical keyboard keys go';
     this.keyModeBtn.classList.toggle('joy', joy);
+    this.keyModeBtn.toggleAttribute('disabled', arcade);
     this.muteBtn.textContent = emu.settings.muted ? '\u{1F507}' : '\u{1F50A}';
-    this.keyboardDeck.hidden = !emu.settings.showKeyboard;
+    // the Arcade6502 has no keyboard at all: no virtual keyboard, two control panels and the cabinet switches
+    this.keyboardDeck.hidden = !emu.settings.showKeyboard || arcade;
+    this.kbToggle.hidden = arcade;
+    this.cabinet.hidden = !arcade;
+    for (const p of this.pads) p.setArcade(arcade);
     this.joyDeck.hidden = !emu.settings.showJoysticks;
     this.vkb.attach(emu.keyboard ? {
       keyDown: c => { if (emu.powered) emu.keyboard?.keyboard.keyDown(c); },
@@ -239,6 +271,7 @@ export class App {
     if (this.tab === 'terminal') this.terminal.render();
     this.vkb.update();
     this.pads.forEach((p, i) => p.update(emu.joystickState(i)));
+    if (emu.isArcade) for (const [bit, b] of this.switchBtns) b.classList.toggle('on', (emu.switchState & bit) !== 0);
     const now = performance.now();
     if (now - this.lastSlowUpdate > 100 || emu.paused) this.slowUpdate();
   }

@@ -20,8 +20,10 @@ export interface Settings {
   randomRam: boolean;
   /** serial terminal layout: same as the CRT (40x24) or ANSI 80x24 */
   serialMode: 'crt' | 'ansi';
-  /** BIOS image (public/roms, list in machines/roms.ts) */
+  /** BIOS image of the BO6502 and the miniVIC (public/roms, list in machines/roms.ts) */
   bios: BiosId;
+  /** BIOS image of the Arcade6502 (default: the Arcade BIOS) */
+  arcadeBios: BiosId;
   /** type of the SD card in the slot */
   sdKind: SdKind;
 }
@@ -31,7 +33,7 @@ const KEY = 'bo6502-emulator.settings.v1';
 function defaults(): Settings {
   return {
     machine: 'minivic',
-    configs: { bo6502: defaultConfig('bo6502'), minivic: defaultConfig('minivic') },
+    configs: { bo6502: defaultConfig('bo6502'), minivic: defaultConfig('minivic'), arcade: defaultConfig('arcade') },
     volume: 0.7,
     muted: false,
     mono: false,
@@ -43,6 +45,7 @@ function defaults(): Settings {
     randomRam: false,
     serialMode: 'crt',
     bios: 'keybsd',   // the MiniVIC Apps of the default full SD need it; the games run with both
+    arcadeBios: 'arcade',
     sdKind: 'sdsc-v1',
   };
 }
@@ -53,10 +56,16 @@ export function loadSettings(): Settings {
     const raw = localStorage.getItem(KEY);
     if (!raw) return d;
     const s = { ...d, ...JSON.parse(raw) } as Settings;
-    // the miniVIC has a fixed configuration: always the factory one
-    s.configs = { bo6502: upgradeConfig(s.configs?.bo6502 ?? d.configs.bo6502), minivic: defaultConfig('minivic') };
+    // the miniVIC and the Arcade6502 have a fixed configuration: always the factory one
+    s.configs = {
+      bo6502: upgradeConfig(s.configs?.bo6502 ?? d.configs.bo6502),
+      minivic: defaultConfig('minivic'),
+      arcade: defaultConfig('arcade'),
+    };
+    if (!(s.machine in s.configs)) s.machine = d.machine;
     // unknown values (old or hand-edited settings) fall back to the defaults
     if (!ROMS.some(r => r.id === s.bios)) s.bios = d.bios;
+    if (!ROMS.some(r => r.id === s.arcadeBios)) s.arcadeBios = d.arcadeBios;
     if (!SD_KINDS.some(([k]) => k === s.sdKind)) s.sdKind = d.sdKind;
     return s;
   } catch {

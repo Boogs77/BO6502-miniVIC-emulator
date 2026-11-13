@@ -5,7 +5,7 @@
 ![Audio](https://img.shields.io/badge/Audio-2x%20AY--3--8910%20Stereo-yellow)
 ![Platform](https://img.shields.io/badge/Platform-Browser-green)
 
-A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-based_modular_computer)** modular computer and for the **miniVIC**, its compact arcade-oriented sibling. Pick the machine, plug the boards into the rack, power it on and play the **[miniVIC games](https://github.com/Boogs77/miniVIC_games)** with stereo sound, an on-screen keyboard and two clickable joysticks.
+A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-based_modular_computer)** modular computer , for the **miniVIC**, its compact arcade-oriented sibling, and for the **Arcade6502**, the miniVIC cabinet without a keyboard. Pick the machine, plug the boards into the rack, power it on and play the **[miniVIC games](https://github.com/Boogs77/miniVIC_games)** with stereo sound, an on-screen keyboard and two clickable joysticks.
 
 ### ▶️ [Play online](https://boogs77.github.io/BO6502-miniVIC-emulator/)
 
@@ -15,7 +15,7 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 
 ## ✨ Features
 
-* **Two machines**: switch between **BO6502** (configurable rack) and **miniVIC** (fixed layout) with one click.
+* **Three machines**: switch between **BO6502** (configurable rack), **miniVIC** (fixed layout) and **Arcade6502** (the cabinet: no keyboard, two control panels with three buttons, START and COIN, the Arcade BIOS game front-end and the cabinet SD) with one click.
 * **Real BIOS**: boots the miniVIC BIOS **27.10.26 KEYB/SD** (extended keyboard, SDHC cards, sector read/write) or the standard 24.10.26 (WozMon, Microsoft BASIC 1977, SD programs menu), selectable in the Media panel.
 * **Full SD by default**: all the miniVIC games, the [MiniVIC Apps](https://github.com/Boogs77/miniVIC_apps) (Write, Calc, File, Desk, Term, Asm, Mon, Disk, and the Jukebox that plays the MiniVIC Sound songs), songs and sample documents, ready in the SD menu (key `3`). The **Games** and **Apps** panels also start every game and application with one click; the **Music** panel lists the 16 MiniVIC Sound songs and starts the Jukebox that plays them.
 * **Accurate TMS9918A**: scanline renderer, all video modes, 32 sprites with the 4-per-line limit, 5th sprite flag, collisions, early clock, magnification, real port latch/read-ahead behaviour and vblank interrupt.
@@ -29,22 +29,24 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 
 ## 🧠 Emulated Hardware
 
-| Board | Chip | BO6502 | miniVIC |
-| :--- | :--- | :---: | :---: |
-| **CPU** | W65C02S (full WDC + Rockwell set, exact cycles) | 0.5 / 1 / 2 MHz | 1 MHz |
-| **RAM** | HM62256LP 32KB | `$0000-$7FFF` | `$0000-$7FFF` |
-| **ROM** | AT28C256 32KB (I/O pages excluded) | `$8000-$FFFF` | `$8000-$FFFF` |
-| **VDU** | TMS9918A | `$B000` · IRQ | `$B000` · NMI |
-| **Serial I/O** | W65C51 ACIA | `$C000` | `$C000` |
-| **KEYb** | W65C22 + PS/2 (raw set 2 scancodes) | `$D180` | `$D180` |
-| **Joystick** | W65C22 + 2x DB9 (Sega) | `$D1A0` | `$D580` |
-| **SD Card** | W65C22 SPI bit-bang | `$D1B0` | `$DD80` |
-| **Audio** | 2x AY-3-8910 stereo | `$D1C0` | `$D380` |
-| **Big LCD** | W65C22 + Toshiba T6963C, 160x128 | `$D190` | — |
-| **Legacy LCD** | W65C22 + HD44780U 16x2 (4 or 8 bit) | `$D000` | — |
-| **LED test** | W65C22 + 16 LEDs | `$D000` | — |
+| Board | Chip | BO6502 | miniVIC | Arcade6502 |
+| :--- | :--- | :---: | :---: | :---: |
+| **CPU** | W65C02S (full WDC + Rockwell set, exact cycles) | 0.5 / 1 / 2 MHz | 1 MHz | 1 MHz |
+| **RAM** | HM62256LP 32KB | `$0000-$7FFF` | `$0000-$7FFF` | `$0000-$7FFF` |
+| **ROM** | AT28C256 32KB (I/O pages excluded) | `$8000-$FFFF` | `$8000-$FFFF` | `$8000-$FFFF` |
+| **VDU** | TMS9918A | `$B000` · IRQ | `$B000` · NMI | `$B000` · NMI |
+| **Serial I/O** | W65C51 ACIA | `$C000` | `$C000` | `$C000` |
+| **KEYb** | W65C22 + PS/2 (raw set 2 scancodes) | `$D180` | `$D180` | — |
+| **Joystick** | W65C22 + 2x DB9 (Sega) / 2x JAMMA panels | `$D1A0` | `$D580` | `$D580` · 8 bits |
+| **SD Card** | W65C22 SPI bit-bang | `$D1B0` | `$DD80` | `$DD80` + switches |
+| **Audio** | 2x AY-3-8910 stereo | `$D1C0` | `$D380` | `$D380` |
+| **Big LCD** | W65C22 + Toshiba T6963C, 160x128 | `$D190` | — | — |
+| **Legacy LCD** | W65C22 + HD44780U 16x2 (4 or 8 bit) | `$D000` | — | — |
+| **LED test** | W65C22 + 16 LEDs | `$D000` | — | — |
 
 On the BO6502 every board can be removed, moved to a different base address and wired to IRQ or NMI, just like the jumpers on the real modules.
+
+On the **Arcade6502** each joystick port uses all 8 bits: bits 0-5 as on the miniVIC (so the miniVIC games run unchanged), **bit 6 button 3, bit 7 START**. The free pins of the SD board VIA (`$DD81`, active low) read the cabinet switches: bit 0 **TEST**, bit 5 **SERVICE**, bit 6 **COIN 1**, bit 7 **COIN 2**. It boots the **Arcade BIOS** (game list, gallery and game pages with pictures and descriptions, system and joystick tests; both START held for 2 s go back to the list) with the **cabinet SD** (`public/sd_arcade.img.gz`: games, MiniVIC Jukebox and songs, the arcade catalog).
 
 ---
 
@@ -53,10 +55,11 @@ On the BO6502 every board can be removed, moved to a different base address and 
 | Input | Joystick 1 | Joystick 2 |
 | :--- | :--- | :--- |
 | **Keyboard** (mode "Keys → Joystick") | Arrows · Z / Space = 1 · X = 2 | W A S D · F = 1 · G = 2 |
+| **Arcade6502 only** | C = 3 · 1 / Enter = START · 5 = COIN | H = 3 · 2 = START · 6 = COIN |
 | **Mouse / touch** | on-screen pad | on-screen pad |
-| **Gamepad** | first pad | second pad |
+| **Gamepad** | first pad (Arcade6502: A B X = 1 2 3, Start, Back = COIN) | second pad |
 
-In "Keys → Keyboard" mode the physical keyboard drives the PS/2 keyboard (US layout, as in the BIOS scancode table).
+In "Keys → Keyboard" mode the physical keyboard drives the PS/2 keyboard (US layout, as in the BIOS scancode table). The Arcade6502 has no keyboard: the keys always go to the control panels, and `9` / `0` are the cabinet **SERVICE** / **TEST** switches (also on screen).
 
 ---
 
