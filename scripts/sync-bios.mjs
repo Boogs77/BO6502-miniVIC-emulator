@@ -14,8 +14,8 @@
 //   --json                                 prints the summary as JSON
 //   --arcade-source <file>                 Arcade BIOS image (default: ARCADE_BIOS, then the bin/arcade.bin of the
 //                                          "Arcade BIOS" project next to this repository; with --github the
-//                                          github.com/Boogs77/arcade_bios repository, private: needs a token that can
-//                                          read it, otherwise public/roms/arcade.bin is kept as it is)
+//                                          github.com/Boogs77/arcade_bios repository; if it cannot be read,
+//                                          public/roms/arcade.bin is kept as it is)
 //
 // Checks before copying: exactly 32768 bytes, reset vector ($FFFC) inside the ROM, JMP ($4C) at $FD18
 // (JT_SD_READ_SECTOR). The version comes from the menu text ("BIOS Version 27.10.26 KEYB/SD"),
@@ -115,7 +115,7 @@ async function readSource() {
 
 /**
  * the Arcade BIOS image: { rom, source } or { rom: null, note } when it cannot be read
- * (the private repository without a token, or no local project): public/roms/arcade.bin is then kept
+ * (GitHub not reachable, or no local project): public/roms/arcade.bin is then kept
  */
 async function readArcadeSource() {
   if (flag('--github') && !opt('--arcade-source')) {

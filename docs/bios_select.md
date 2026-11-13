@@ -23,8 +23,7 @@ The KEYB/SD BIOS is a fork of the standard one. It keeps the old jump table `$FD
 - support for every SD card type: SDSC v1, SDSC v2 and SDHC/SDXC;
 - sector read/write for programs.
 
-The full description is in the fork folder, file `KEYB_SD.md`:
-`KEYB_SD.md` of the miniVIC_bios repository.
+The full description is in `KEYB_SD.md` of the [miniVIC_bios](https://github.com/Boogs77/miniVIC_bios) repository.
 
 New jump table entries:
 

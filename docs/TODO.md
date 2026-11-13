@@ -14,14 +14,13 @@ Undocumented hardware behaviour is asked to the user, not invented.
 ## 🕹️ Third machine: Arcade6502 (done 2026-11-13)
 
 The miniVIC cabinet without the keyboard (schematic `Arcade6502.sch`, Arcade BIOS project `../Arcade BIOS`,
-github.com/Boogs77/arcade_bios, private). Done: profile `arcade` (miniVIC addresses, VDP on NMI, serial port, no
+github.com/Boogs77/arcade_bios). Done: profile `arcade` (miniVIC addresses, VDP on NMI, serial port, no
 keyboard), 8-bit joystick ports (button 3, START), TEST / SERVICE / COIN 1 / COIN 2 on the SD VIA, two control panels
 and the cabinet switches on screen, keys and gamepads, Arcade BIOS 12.11.26 by default (`scripts/sync-bios.mjs`),
 cabinet SD `sd_arcade.img.gz` by default, Games / Music panels running on it, `tests/arcade.test.ts`.
 The front-end (list, gallery, game pages, tests, Jukebox entry) is in the Arcade BIOS.
 - Later (user's decision 2026-11-13): coin and START inside the games, button 3; the games will be changed for it.
-- The daily workflow cannot read the private arcade_bios repository: `public/roms/arcade.bin` is updated by running
-  `node scripts/sync-bios.mjs` locally (or by giving the workflow a token, `ARCADE_BIOS_TOKEN`).
+- The daily workflow syncs `public/roms/arcade.bin` from github.com/Boogs77/arcade_bios (public since 2026-11-13).
 
 ---
 

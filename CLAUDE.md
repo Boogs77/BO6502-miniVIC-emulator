@@ -4,7 +4,7 @@ Web emulator (TypeScript + Vite, no runtime dependencies) of three 65C02 machine
 - **BO6502**: modular computer on a 39-pin backplane — https://github.com/Boogs77/BO6502_65C02-based_modular_computer
 - **miniVIC**: the compact version for games — games in https://github.com/Boogs77/miniVIC_games
 - **Arcade6502**: the miniVIC cabinet without a keyboard (hardware `../arcade_65c02`, BIOS `../Arcade BIOS`,
-  github.com/Boogs77/arcade_bios, private; how it works: `../Arcade BIOS/ARCADE.md`)
+  github.com/Boogs77/arcade_bios; how it works: `../Arcade BIOS/ARCADE.md`)
 
 Repository: https://github.com/Boogs77/BO6502-miniVIC-emulator
 Online (GitHub Pages, automatic deploy on every push to main): https://boogs77.github.io/BO6502-miniVIC-emulator/
@@ -38,7 +38,7 @@ public/roms/minivic_keybsd.bin  BIOS 27.10.26 KEYB/SD ('keybsd', **default**): e
                         sector read/write ($FD18-$FD21). Copied by scripts/sync-bios.mjs from bin/boogs.bin of
                         github.com/Boogs77/miniVIC_bios (local copy ../miniVIC BIOS)
 public/roms/arcade.bin  Arcade BIOS ('arcade', default BIOS of the Arcade6502), copied by scripts/sync-bios.mjs from
-                        bin/arcade.bin of ../Arcade BIOS (the --github sync keeps it: the repository is private)
+                        bin/arcade.bin of ../Arcade BIOS (or of github.com/Boogs77/arcade_bios with --github)
 public/sd_arcade.img.gz default SD of the Arcade6502: sd_arcade.img of bo6502-SDbuilder (update_sd.py --mode arcade):
                         cabinet games, Jukebox and songs, arcade catalog read by the front-end
 public/sd_full.img.gz   **default SD**: sd_full.img of bo6502-SDbuilder (update_sd.py --mode full: games, MiniVIC Apps,
@@ -119,7 +119,7 @@ Shared hardware: W65C02S, 32 KB RAM `$0000-$7FFF`, 32 KB ROM `$8000-$FFFF` (with
   = entry - 1 on the stack), like the front-end, after the SD has been idle for 30 frames. Test: `tests/arcade.test.ts`.
 - Coin/start and button 3 are not used by the games yet (later, user's decision 2026-11-13).
 
-## miniVIC BIOS (source: `../miniVIC BIOS`)
+## miniVIC BIOS (source: github.com/Boogs77/miniVIC_bios, local copy `../miniVIC BIOS`)
 - Two images, chosen in Media → ROM (setting `bios`, default `'keybsd'`): changing it rebuilds the machine with the
   same SD and powers it on again. KEYB/SD (project `../miniVIC BIOS`, doc `KEYB_SD.md`) keeps the jump table
   `$FD00-$FD15` and adds `$FD18` read sector, `$FD1B` write sector (`SD_LBA` $0316-$0319), `$FD1E` SD init
