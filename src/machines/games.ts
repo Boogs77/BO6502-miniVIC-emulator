@@ -60,6 +60,7 @@ export const GAMES: GameInfo[] = [
   { file: 'haunted_keep.bin', title: 'Haunted Keep', players: '1-2' },
   { file: 'pastry_panic.bin', title: 'Pastry Panic', players: '1-2' },
   { file: 'brick_drop.bin', title: 'Brick Drop', players: '1-2' },
+  { file: 'turbo_horizon.bin', title: 'Turbo Horizon', players: '1-2' },
 ];
 
 export const GAME_LOAD = 0x0FD0;
