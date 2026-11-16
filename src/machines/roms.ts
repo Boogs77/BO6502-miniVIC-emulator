@@ -14,6 +14,6 @@ export interface RomInfo {
 
 export const ROMS: RomInfo[] = [
   { id: 'std', file: 'minivic.bin', title: 'BIOS 24.10.26 (standard)', version: '24.10.26' },
-  { id: 'keybsd', file: 'minivic_keybsd.bin', title: 'BIOS 03.11.26 KEYB/SD', version: '03.11.26 KEYB/SD' },
+  { id: 'keybsd', file: 'minivic_keybsd.bin', title: 'BIOS 16.11.26 KEYB/SD R2', version: '16.11.26 KEYB/SD R2' },
   { id: 'arcade', file: 'arcade.bin', title: 'Arcade BIOS 16.11.26 ARCADE', version: '16.11.26 ARCADE' },
 ];
