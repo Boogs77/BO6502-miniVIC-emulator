@@ -103,11 +103,11 @@ export default async function () {
   savePng(m, 'arcade_game');
   console.log(`      started from the front-end: ${name}`);
 
-  // ---- both START held 2 s: back to the list
+  // ---- both START held 2 s (120 NMIs; a game that turns the VDP interrupt off while it draws, like
+  // Asteroids, gets an NMI every other frame): back to the list
   joy.setJoystick(0, JOY_START); joy.setJoystick(1, JOY_START);
-  runFrames(m, 130);
-  joy.setJoystick(0, 0); joy.setJoystick(1, 0);
   waitFor(m, () => inList(m), 900, 'back to the front-end');
+  joy.setJoystick(0, 0); joy.setJoystick(1, 0);
 
   // ---- TEST switch: the joystick test
   sd.setSwitches(SW_TEST); runFrames(m, 6); sd.setSwitches(0);
