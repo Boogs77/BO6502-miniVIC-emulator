@@ -102,7 +102,8 @@ function bootAll(): void {
 // ---------------------------------------------------------------- 3, 4: keyboard
 function keyboard(): void {
   const keysOf = (m: Machine) => Array.from(m.ram.subarray(0x2000, 0x2000 + m.ram[0x0FF5]));
-  // classic mode: the same codes with both BIOS (arrow up = keypad 8, '?' dropped)
+  // classic mode: the same codes with both BIOS (arrow up = keypad 8); the standard BIOS drops '?',
+  // KEYB/SD from 16.11.26 R2 gives it (before, it dropped it too)
   const classic: string[] = [];
   for (const id of ['std', 'keybsd']) {
     const m = machine(id, 'sdsc-v1', null);
@@ -110,7 +111,8 @@ function keyboard(): void {
     tap(m, 'KeyA'); tap(m, 'ArrowUp'); tap(m, 'Slash', ['ShiftLeft']); tap(m, 'KeyB', ['ShiftLeft']);
     classic.push(hex(keysOf(m)));
   }
-  assert(classic[0] === hex([0x61, 0x38, 0x42]) && classic[1] === classic[0], `classic mode: std [${classic[0]}] keybsd [${classic[1]}]`);
+  assert(classic[0] === hex([0x61, 0x38, 0x42]) && (classic[1] === classic[0] || classic[1] === hex([0x61, 0x38, 0x3F, 0x42])),
+    `classic mode: std [${classic[0]}] keybsd [${classic[1]}]`);
 
   const m = machine('keybsd', 'sdsc-v1', null);
   startMailbox(m);
