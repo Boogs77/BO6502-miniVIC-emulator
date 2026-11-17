@@ -20,7 +20,7 @@ A browser emulator for the **[BO6502](https://github.com/Boogs77/BO6502_65C02-ba
 * **Full SD by default**: all the miniVIC games, the [MiniVIC Apps](https://github.com/Boogs77/miniVIC_apps) (Write, Calc, File, Desk, Term, Asm, Mon, Disk, and the Jukebox that plays the MiniVIC Sound songs), songs and sample documents, ready in the SD menu (key `3`). The **Games** and **Apps** panels also start every game and application with one click; the **Music** panel lists the 16 MiniVIC Sound songs and starts the Jukebox that plays them.
 * **Accurate TMS9918A**: scanline renderer, all video modes, 32 sprites with the 4-per-line limit, 5th sprite flag, collisions, early clock, magnification, real port latch/read-ahead behaviour and vblank interrupt.
 * **True stereo audio**: two **AY-3-8910** emulated at counter level (tone, 17-bit noise LFSR, 16 envelope shapes, measured logarithmic DAC), cycle-synchronised with the CPU and played through Web Audio.
-* **Clickable input**: PS/2 keyboard and two Sega Master System joysticks drawn on screen, usable with mouse or touch; physical keyboard and gamepads work too.
+* **Clickable input**: keyboard and two Sega Master System joysticks drawn on screen, usable with mouse or touch; physical keyboard and gamepads work too.
 * **SD card**: SPI bit-banged SD emulation of SDSC v1, SDSC v2 and SDHC cards, read and write, a 16 MB document area, a save area for game records kept in the browser (export/import as `.json`), `.img` upload/download and an SD image builder compatible with `make_sd.py`.
 * **Display boards**: Big LCD T6963 (160x128 graphics and text), legacy HD44780 16x2 LCD and the 16-LED test board, each with a ready-to-run demo.
 * **Debugger**: CPU registers, disassembly, step / frame, breakpoints, memory and VRAM viewer, VDP, VIA and AY registers.
@@ -95,6 +95,7 @@ The test suite runs the real BIOS headless, loads a game from the emulated SD ca
 
 * **BO6502 System:** [65C02-based Modular Computer](https://github.com/Boogs77/BO6502_65C02-based_modular_computer)
 * **miniVIC:** [65C02-based arcade computer (hardware)](https://github.com/Boogs77/miniVIC_65c02)
+* **Manuals:** [miniVIC Operation Manual](https://github.com/Boogs77/miniVIC-manual) · [BO6502 Operation Manual](https://github.com/Boogs77/BO6502-manual)
 * **miniVIC Games:** [65C02 Arcade Collection](https://github.com/Boogs77/miniVIC_games)
 * **miniVIC Apps:** [Office applications for the miniVIC](https://github.com/Boogs77/miniVIC_apps)
 * **miniPET:** [The sister project](https://github.com/Boogs77/miniPET_65c02)
